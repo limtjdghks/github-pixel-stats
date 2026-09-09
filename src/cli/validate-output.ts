@@ -82,7 +82,7 @@ function aggregateState(state: CollectorState): Array<[string, number]> {
   }
   return [...counts].sort(([leftName, leftCount], [rightName, rightCount]) =>
     rightCount - leftCount || leftName.localeCompare(rightName),
-  ).slice(0, 5);
+  );
 }
 
 function assertSvg(svg: string, name: string, width: number, height: number): void {
@@ -95,7 +95,7 @@ function assertSvg(svg: string, name: string, width: number, height: number): vo
   assert(/<title\s+id="[^"]+">.+<\/title>/.test(svg), `${name} has no title.`);
   assert(/<desc\s+id="[^"]+">.+<\/desc>/.test(svg), `${name} has no description.`);
   assert(svg.includes("shape-rendering=\"crispEdges\""), `${name} does not use crisp pixel rendering.`);
-  assert(svg.includes("data:font/woff2;base64,"), `${name} does not embed Pixelify Sans.`);
+  assert(svg.includes("data:font/woff2;base64,"), `${name} does not embed a pixel font.`);
   assert(!/<script\b/i.test(svg), `${name} contains a script.`);
   assert(!/<foreignObject\b/i.test(svg), `${name} contains foreignObject.`);
   const withoutNamespace = svg.replace('xmlns="http://www.w3.org/2000/svg"', "");
@@ -134,13 +134,14 @@ async function main(): Promise<void> {
     assert(day.commits === (authoredDateCounts.get(day.date) ?? 0), `Activity count for ${day.date} does not match collector state.`);
   }
 
-  const expectedLanguages = aggregateState(state);
+  const allLanguageCounts = aggregateState(state);
+  const expectedLanguages = allLanguageCounts.slice(0, 5);
   assert(expectedLanguages.length === snapshot.languages.length, "State and snapshot language totals differ.");
-  const topTotal = expectedLanguages.reduce((sum, [, count]) => sum + count, 0);
+  const allLanguageTotal = allLanguageCounts.reduce((sum, [, count]) => sum + count, 0);
   snapshot.languages.forEach((language, index) => {
     const expected = expectedLanguages[index];
     assert(expected?.[0] === language.name && expected[1] === language.commitCount, `Language ${index} does not match collector state.`);
-    const expectedShare = language.commitCount / topTotal;
+    const expectedShare = language.commitCount / allLanguageTotal;
     assert(Math.abs(language.share - expectedShare) < 0.000001, `Language ${language.name} has an invalid share.`);
     assert(language.filledSegments === Math.max(1, Math.round(expectedShare * LANGUAGE_BAR_SEGMENTS)), `Language ${language.name} has an invalid bar.`);
     assert(language.color.toLowerCase() === classifier.colorFor(language.name).toLowerCase(), `Language ${language.name} has an invalid Linguist color.`);

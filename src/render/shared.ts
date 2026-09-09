@@ -1,26 +1,12 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-
 import { CARD_COLORS } from "../config.js";
 
-const require = createRequire(import.meta.url);
-
-function loadFont(weight: 400 | 700): string {
-  const path = require.resolve(
-    `@fontsource/pixelify-sans/files/pixelify-sans-latin-${weight}-normal.woff2`,
-  );
-
-  return readFileSync(path).toString("base64");
-}
-
-const regularFont = loadFont(400);
-const boldFont = loadFont(700);
+const pixelFont = readFileSync(new URL("../../assets/fonts/NeoDunggeunmoPro.woff2", import.meta.url)).toString("base64");
 
 export function renderFontStyles(): string {
   return `<style>
-@font-face{font-family:"Pixelify Sans";src:url("data:font/woff2;base64,${regularFont}") format("woff2");font-style:normal;font-weight:400;font-display:block}
-@font-face{font-family:"Pixelify Sans";src:url("data:font/woff2;base64,${boldFont}") format("woff2");font-style:normal;font-weight:700;font-display:block}
-text{font-family:"Pixelify Sans",monospace;fill:${CARD_COLORS.ink}}
+@font-face{font-family:"NeoDunggeunmo Pro";src:url("data:font/woff2;base64,${pixelFont}") format("woff2");font-style:normal;font-weight:400;font-display:block}
+text{font-family:"NeoDunggeunmo Pro",monospace;font-weight:400;font-synthesis:none;fill:${CARD_COLORS.ink}}
 .on-dark{fill:${CARD_COLORS.cyan}}
 .muted{fill:${CARD_COLORS.muted}}
 .light{fill:${CARD_COLORS.panel}}

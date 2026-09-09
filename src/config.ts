@@ -14,4 +14,4 @@ export const CARD_COLORS = {
 
 export const STATS_CARD = { width: 570, height: 300 } as const;
 export const LANGUAGES_CARD = { width: 355, height: 300 } as const;
-export const LANGUAGE_BAR_SEGMENTS = 20;
+export const LANGUAGE_BAR_SEGMENTS = 10;

@@ -9,11 +9,11 @@ The cards use the approved stepped pixel frames, a white cat in a dark hoodie, a
 The GitHub Pages deployment exposes these files:
 
 - `stats.svg`: commits, owned public repositories, stars on owned non-fork repositories, and the pixel mascot
-- `languages.svg`: the most committed languages shown as segmented bars
+- `languages.svg`: the most committed languages shown as 10-segment bars
 - `data.json`: the machine-readable snapshot used to render both cards
 - `index.html`: a preview of the published cards
 
-The snapshot covers the latest 12 months. Commit discovery is limited to public repositories and their default branches. A commit that touches one or more files of a language counts once for that language, so language totals can exceed the total number of unique commits.
+The snapshot covers the latest 12 months. Commit discovery is limited to public repositories and their default branches. A commit that touches one or more files of a language counts once for that language, so language totals can exceed the total number of unique commits. Each language share uses the sum of commit counts across **all** classified languages as its denominator, while only the top five languages are displayed. Bars show `round(share × 10)` filled cells with a minimum of one for a nonzero language. One cell is therefore a minimum visibility marker for shares below 10%, not an exact percentage.
 
 ## Repository setup
 
@@ -72,4 +72,4 @@ To place both cards on one row, wrap the two images in the same paragraph and ke
 
 ## Source data and font
 
-Language metadata and representative colors come from GitHub Linguist 9.7.0. The pixel typeface is Pixelify Sans from Google Fonts. Their license texts are included in `third_party/`.
+Language metadata and representative colors come from GitHub Linguist 9.7.0. The embedded pixel typeface is [NeoDunggeunmo Pro](https://github.com/neodgm/neodgm-pro-webfont), pinned to webfont-kit commit `1751c2981808869750c7df391c1d2b486e978f12`. Their license texts are included in `third_party/`.

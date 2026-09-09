@@ -59,10 +59,10 @@ function aggregateLanguages(commits: CachedCommit[], classifier: LinguistClassif
       counts.set(language, (counts.get(language) ?? 0) + 1);
     }
   }
+  const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
   const top = [...counts]
     .sort(([leftName, leftCount], [rightName, rightCount]) => rightCount - leftCount || leftName.localeCompare(rightName))
     .slice(0, 5);
-  const total = top.reduce((sum, [, count]) => sum + count, 0);
   return top.map(([name, commitCount]) => {
     const share = total === 0 ? 0 : commitCount / total;
     return {
