@@ -51,6 +51,23 @@ function assertSnapshot(value: unknown): asserts value is StatsSnapshot {
   }
   assert(Array.isArray(value.languages) && value.languages.length <= 5, "data.json has an invalid language list.");
   value.languages.forEach(assertLanguage);
+  assert(isRecord(value.activity) && value.activity.timezone === "UTC", "data.json has invalid activity metadata.");
+  assert(Array.isArray(value.activity.days), "data.json has no activity days.");
+  const firstDate = new Date(value.period.from).toISOString().slice(0, 10);
+  const lastDate = new Date(value.period.to).toISOString().slice(0, 10);
+  const firstDay = Date.parse(`${firstDate}T00:00:00Z`);
+  const lastDay = Date.parse(`${lastDate}T00:00:00Z`);
+  const expectedDayCount = (lastDay - firstDay) / 86_400_000 + 1;
+  assert(value.activity.days.length === expectedDayCount, "data.json activity does not cover the entire period.");
+  let activityTotal = 0;
+  value.activity.days.forEach((day: unknown, index: number) => {
+    assert(isRecord(day), `Activity day ${index} is not an object.`);
+    const expectedDate = new Date(firstDay + index * 86_400_000).toISOString().slice(0, 10);
+    assert(day.date === expectedDate, `Activity day ${index} has an invalid date sequence.`);
+    assert(Number.isSafeInteger(day.commits) && Number(day.commits) >= 0, `Activity day ${index} has an invalid count.`);
+    activityTotal += Number(day.commits);
+  });
+  assert(activityTotal === value.stats.commits, "Activity and snapshot commit totals differ.");
   assert(isRecord(value.source), "data.json has no source metadata.");
   assert(value.source.commitScope === "public-default-branches", "data.json has an invalid commit scope.");
   assert(value.source.languageMetric === "commits-touching-language", "data.json has an invalid language metric.");
@@ -108,6 +125,15 @@ async function main(): Promise<void> {
     assert(authoredAt >= periodFrom && authoredAt <= periodTo, `State commit ${commit.sha} is outside the snapshot period.`);
   }
 
+  const authoredDateCounts = new Map<string, number>();
+  for (const commit of Object.values(state.commits)) {
+    const date = new Date(commit.authoredAt).toISOString().slice(0, 10);
+    authoredDateCounts.set(date, (authoredDateCounts.get(date) ?? 0) + 1);
+  }
+  for (const day of snapshot.activity.days) {
+    assert(day.commits === (authoredDateCounts.get(day.date) ?? 0), `Activity count for ${day.date} does not match collector state.`);
+  }
+
   const expectedLanguages = aggregateState(state);
   assert(expectedLanguages.length === snapshot.languages.length, "State and snapshot language totals differ.");
   const topTotal = expectedLanguages.reduce((sum, [, count]) => sum + count, 0);
@@ -128,7 +154,20 @@ async function main(): Promise<void> {
     const visibleCount = new RegExp(`<text[^>]*>\\s*${language.commitCount.toLocaleString("en-US")}\\s*</text>`);
     assert(!visibleCount.test(languagesSvg), `languages.svg exposes ${language.name}'s numeric total.`);
   }
-  const segmentCount = languagesSvg.match(/width="6" height="10"/g)?.length ?? 0;
+  const activityCells = [...statsSvg.matchAll(/<rect\b[^>]*\bdata-activity-date="([^"]+)"[^>]*>/g)];
+  assert(activityCells.length === snapshot.activity.days.length, "stats.svg has an invalid number of activity cells.");
+  const visibleActivity = new Map<string, number>();
+  for (const cell of activityCells) {
+    const date = cell[1];
+    const countMatch = /\bdata-activity-count="(\d+)"/.exec(cell[0]);
+    assert(date && countMatch, "stats.svg has an invalid activity cell.");
+    assert(!visibleActivity.has(date), `stats.svg repeats activity date ${date}.`);
+    visibleActivity.set(date, Number(countMatch[1]));
+  }
+  for (const day of snapshot.activity.days) {
+    assert(visibleActivity.get(day.date) === day.commits, `stats.svg has an invalid activity count for ${day.date}.`);
+  }
+  const segmentCount = languagesSvg.match(/\bdata-language-segment="true"/g)?.length ?? 0;
   assert(segmentCount === snapshot.languages.length * LANGUAGE_BAR_SEGMENTS, "languages.svg has an invalid number of graph segments.");
   assert(preview.includes('src="./stats.svg"') && preview.includes('src="./languages.svg"'), "index.html does not reference both cards.");
 }

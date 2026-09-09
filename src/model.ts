@@ -35,6 +35,14 @@ export interface LanguageStat {
   color: string;
 }
 
+export interface DailyActivity {
+  timezone: "UTC";
+  days: Array<{
+    date: string;
+    commits: number;
+  }>;
+}
+
 export interface StatsSnapshot {
   schemaVersion: typeof SNAPSHOT_SCHEMA_VERSION;
   username: typeof USERNAME;
@@ -50,6 +58,7 @@ export interface StatsSnapshot {
     stars: number;
   };
   languages: LanguageStat[];
+  activity: DailyActivity;
   source: {
     commitScope: "public-default-branches";
     languageMetric: "commits-touching-language";

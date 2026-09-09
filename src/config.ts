@@ -1,15 +1,17 @@
 export const CARD_COLORS = {
-  canvas: "#C9CBFF",
-  panel: "#EEF0FF",
-  ink: "#17214F",
-  muted: "#56618D",
-  grid: "#35406F",
-  lime: "#B6F36B",
-  cyan: "#83D9F7",
-  peach: "#FFB49D",
-  violet: "#8B7DF1",
+  canvas: "#DEDDFD",
+  panel: "#EAF3FF",
+  ink: "#1C2B4D",
+  muted: "#45659A",
+  grid: "#3D548A",
+  lime: "#AEF2B2",
+  cyan: "#86D9FA",
+  peach: "#FFBC94",
+  violet: "#B996F4",
+  track: "#C1D2E9",
+  footer: "#24395D",
 } as const;
 
-export const STATS_CARD = { width: 500, height: 230 } as const;
-export const LANGUAGES_CARD = { width: 340, height: 230 } as const;
+export const STATS_CARD = { width: 570, height: 300 } as const;
+export const LANGUAGES_CARD = { width: 355, height: 300 } as const;
 export const LANGUAGE_BAR_SEGMENTS = 20;

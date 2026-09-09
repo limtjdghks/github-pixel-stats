@@ -21,7 +21,9 @@ export function renderFontStyles(): string {
 @font-face{font-family:"Pixelify Sans";src:url("data:font/woff2;base64,${regularFont}") format("woff2");font-style:normal;font-weight:400;font-display:block}
 @font-face{font-family:"Pixelify Sans";src:url("data:font/woff2;base64,${boldFont}") format("woff2");font-style:normal;font-weight:700;font-display:block}
 text{font-family:"Pixelify Sans",monospace;fill:${CARD_COLORS.ink}}
-.on-dark{fill:${CARD_COLORS.canvas}}
+.on-dark{fill:${CARD_COLORS.cyan}}
+.muted{fill:${CARD_COLORS.muted}}
+.light{fill:${CARD_COLORS.panel}}
 </style>`;
 }
 

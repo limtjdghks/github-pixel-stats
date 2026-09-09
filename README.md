@@ -2,6 +2,8 @@
 
 GitHub Pixel Stats collects `limtjdghks`'s public GitHub activity and publishes two independent SVG cards for profile READMEs. The cards combine a pixel-style typeface and mascot with a soft grid layout, while the language card visualizes usage as segmented bars instead of raw totals.
 
+The cards use the approved stepped pixel frames, a white cat in a dark hoodie, and dimensions of `570 × 300` and `355 × 300`. The stats footer shows real daily activity: one cell per UTC author date, seven rows per week, including zero-commit days. The first and last dates can be partial days because the rolling collection period has exact timestamps. Each cell includes its date and commit count, and `data.json` exposes the same values in `activity.days`.
+
 ## Published cards
 
 The GitHub Pages deployment exposes these files:
@@ -42,7 +44,7 @@ Replace `github-pixel-stats` if the service repository uses a different name.
 ```html
 <img
   src="https://limtjdghks.github.io/github-pixel-stats/stats.svg"
-  width="500"
+  width="570"
   alt="limtjdghks GitHub activity"
 />
 ```
@@ -52,12 +54,12 @@ The language card is a separate image and can be placed independently.
 ```html
 <img
   src="https://limtjdghks.github.io/github-pixel-stats/languages.svg"
-  width="340"
+  width="355"
   alt="limtjdghks most committed languages"
 />
 ```
 
-To place both cards on one row, wrap the two images in the same paragraph and keep their widths at `500` and `340`.
+To place both cards on one row, wrap the two images in the same paragraph and keep their widths at `570` and `355`.
 
 ## Operations
 

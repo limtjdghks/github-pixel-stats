@@ -1,22 +1,29 @@
 import { CARD_COLORS } from "../config.js";
 
 export function renderMascot(x: number, y: number): string {
-  return `<g transform="translate(${x} ${y})" aria-hidden="true">
-  <rect x="8" y="0" width="40" height="4" fill="${CARD_COLORS.grid}"/>
-  <rect x="4" y="4" width="48" height="8" fill="${CARD_COLORS.grid}"/>
-  <rect x="0" y="12" width="56" height="36" fill="${CARD_COLORS.grid}"/>
-  <rect x="4" y="8" width="48" height="36" fill="${CARD_COLORS.violet}"/>
-  <rect x="12" y="12" width="32" height="28" fill="${CARD_COLORS.peach}"/>
-  <rect x="12" y="12" width="32" height="8" fill="${CARD_COLORS.ink}"/>
-  <rect x="8" y="16" width="8" height="16" fill="${CARD_COLORS.ink}"/>
-  <rect x="40" y="16" width="8" height="16" fill="${CARD_COLORS.ink}"/>
-  <rect x="16" y="24" width="4" height="4" fill="${CARD_COLORS.ink}"/>
-  <rect x="36" y="24" width="4" height="4" fill="${CARD_COLORS.ink}"/>
-  <rect x="24" y="32" width="8" height="4" fill="${CARD_COLORS.grid}"/>
-  <rect x="4" y="44" width="48" height="8" fill="${CARD_COLORS.ink}"/>
-  <rect x="12" y="48" width="32" height="8" fill="${CARD_COLORS.cyan}"/>
-  <rect x="20" y="48" width="4" height="4" fill="${CARD_COLORS.ink}"/>
-  <rect x="32" y="48" width="4" height="4" fill="${CARD_COLORS.ink}"/>
-  <rect x="24" y="52" width="8" height="4" fill="${CARD_COLORS.lime}"/>
+  return `<g transform="translate(${x} ${y})" aria-hidden="true" shape-rendering="crispEdges">
+  <path d="M10 0H84V4H90V10H94V84H90V90H84V94H10V90H4V84H0V10H4V4H10Z" fill="${CARD_COLORS.lime}"/>
+  <path d="M76 20H80V16H84V20H80V24H76ZM82 30H88V34H82Z" fill="#17243E"/>
+  <path d="M8 66H14V70H18V74H26V70H32V80H26V84H16V80H10V76H6V68H8Z" fill="#111B30"/>
+  <path d="M10 68H12V74H18V78H26V80H18V78H12V76H10Z" fill="#F7FAFF"/>
+  <path d="M28 76H40V90H28V86H26V80H28ZM52 78H66V86H64V90H52Z" fill="#111B30"/>
+  <path d="M30 82H38V86H30ZM54 82H62V86H54Z" fill="#F0F5FF"/>
+  <path d="M24 46H32V42H64V46H70V50H74V60H72V72H70V80H64V84H30V80H24V74H20V60H16V52H20V48H24Z" fill="#111B30"/>
+  <path d="M24 52H66V58H70V72H66V78H28V74H24V68H22V58H24Z" fill="#24334A"/>
+  <path d="M32 56H60V78H32Z" fill="#19263B"/>
+  <path d="M22 56H28V62H24V68H20V60H18V54H22ZM64 56H70V66H66V72H62V62H64Z" fill="#33465B"/>
+  <path d="M24 68H30V78H26V74H22V70H24ZM62 72H68V78H64V80H60V76H62Z" fill="#0E1A2B"/>
+  <path d="M38 68H54V70H58V76H54V78H38V76H34V70H38Z" fill="#101D30"/>
+  <path d="M38 70H54V72H38Z" fill="#2C3C50"/>
+  <path d="M36 56H40V69H36ZM50 56H54V69H50Z" fill="#9CED9D"/>
+  <path d="M36 66H40V70H36ZM50 66H54V70H50Z" fill="#C2FFD0"/>
+  <path d="M30 16H34V20H38V24H54V20H58V16H64V20H66V30H68V38H70V46H68V50H64V54H58V56H36V54H28V50H24V44H26V34H28V22H30Z" fill="#12203A"/>
+  <path d="M32 20H34V24H38V28H54V26H58V22H62V32H64V40H66V46H62V50H56V52H36V50H30V46H28V40H30V32H32Z" fill="#CEDBF0"/>
+  <path d="M34 26H38V30H54V28H58V26H60V34H62V42H64V46H60V50H36V48H32V44H30V38H32V32H34Z" fill="#F6F8FF"/>
+  <path d="M32 22H34V26H36V30H32ZM60 22H62V30H58V26H60Z" fill="#EAC7DF"/>
+  <path d="M36 36H40V40H36ZM56 36H60V40H56Z" fill="#12203A"/>
+  <path d="M46 40H50V44H46V46H44V44H46Z" fill="#26314F"/>
+  <path d="M32 42H36V44H32ZM60 42H64V44H60Z" fill="#E4DCEF"/>
+  <path d="M32 50H38V52H56V50H62V54H56V56H36V54H32Z" fill="#9CAEC9"/>
 </g>`;
 }

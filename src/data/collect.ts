@@ -14,6 +14,7 @@ import {
   STATE_SCHEMA_VERSION,
   USERNAME,
 } from "../model.js";
+import { aggregateActivity } from "./activity.js";
 import { GitHubClient } from "./github-client.js";
 import { LinguistClassifier } from "./linguist.js";
 import { hasStateContentChanged, loadState } from "./state.js";
@@ -142,6 +143,7 @@ export async function collectStats(options: CollectOptions): Promise<CollectionR
           stars: profile.stars,
         },
         languages,
+        activity: aggregateActivity([...commits.values()], from.toISOString(), now.toISOString()),
         source: {
           commitScope: "public-default-branches",
           languageMetric: "commits-touching-language",
