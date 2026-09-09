@@ -30,7 +30,8 @@ interface ApiResponse<T> {
 }
 
 const API_VERSION = "2022-11-28";
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
+const MAX_RATE_LIMIT_WAIT_MS = 60_000;
 
 function hasNextPage(link: string | null): boolean {
   return link?.split(",").some((part) => /rel="next"/.test(part)) ?? false;
@@ -42,6 +43,21 @@ function toApiTimestamp(timestamp: number): string {
 
 function commitKey(commit: SearchCommit): string {
   return `${commit.repositoryId}:${commit.sha}`;
+}
+
+function getRateLimitDelay(response: Response): number | null {
+  const retryAfter = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) {
+    return Math.max(1_000, retryAfter * 1_000);
+  }
+
+  const remaining = response.headers.get("x-ratelimit-remaining");
+  const reset = Number(response.headers.get("x-ratelimit-reset"));
+  if (remaining === "0" && Number.isFinite(reset)) {
+    return Math.max(1_000, reset * 1_000 - Date.now() + 1_000);
+  }
+
+  return null;
 }
 
 export class GitHubClient {
@@ -115,16 +131,7 @@ export class GitHubClient {
     );
 
     if (first.data.incomplete_results || first.data.total_count >= 1_000) {
-      if (to - from < 2_000) {
-        throw new Error(`Commit search is incomplete within a one-second range: ${toApiTimestamp(from)}.`);
-      }
-      const midpoint = Math.floor((from + to) / 2_000) * 1_000;
-      if (midpoint <= from || midpoint >= to) {
-        throw new Error(`Commit search range cannot be split safely: ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`);
-      }
-      const left = await this.searchRange(username, from, midpoint);
-      const right = await this.searchRange(username, midpoint + 1_000, to);
-      return [...left, ...right];
+      return this.splitSearchRange(username, from, to);
     }
 
     const commits = this.mapSearchItems(first.data);
@@ -137,23 +144,32 @@ export class GitHubClient {
         new URLSearchParams({ q: query, sort: "author-date", order: "asc", per_page: "100", page: String(page) }),
       );
       if (response.data.incomplete_results) {
-        throw new Error(`Commit search became incomplete while paging ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`);
+        return this.splitSearchRange(username, from, to);
       }
       commits.push(...this.mapSearchItems(response.data));
       nextPage = hasNextPage(response.headers.get("link"));
     }
     const uniqueCommitCount = new Set(commits.map(commitKey)).size;
     if (uniqueCommitCount !== commits.length) {
-      throw new Error(
-        `Commit search returned duplicate results for ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`,
-      );
+      return this.splitSearchRange(username, from, to);
     }
     if (commits.length !== first.data.total_count) {
-      throw new Error(
-        `Commit search returned ${commits.length} of ${first.data.total_count} expected results for ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`,
-      );
+      return this.splitSearchRange(username, from, to);
     }
     return commits;
+  }
+
+  private async splitSearchRange(username: string, from: number, to: number): Promise<SearchCommit[]> {
+    if (to - from < 2_000) {
+      throw new Error(`Commit search is incomplete within a one-second range: ${toApiTimestamp(from)}.`);
+    }
+    const midpoint = Math.floor((from + to) / 2_000) * 1_000;
+    if (midpoint <= from || midpoint >= to) {
+      throw new Error(`Commit search range cannot be split safely: ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`);
+    }
+    const left = await this.searchRange(username, from, midpoint);
+    const right = await this.searchRange(username, midpoint + 1_000, to);
+    return [...left, ...right];
   }
 
   private mapSearchItems(response: SearchResponse): SearchCommit[] {
@@ -187,10 +203,10 @@ export class GitHubClient {
         return { data: (await response.json()) as T, headers: response.headers };
       }
 
-      const retryAfter = Number(response.headers.get("retry-after"));
+      const rateLimitDelay = getRateLimitDelay(response);
       const canRetry = (response.status === 403 || response.status === 429) && attempt < MAX_RETRIES;
-      if (canRetry && Number.isFinite(retryAfter) && retryAfter <= 30) {
-        await new Promise((resolve) => setTimeout(resolve, Math.max(1, retryAfter) * 1_000));
+      if (canRetry && rateLimitDelay !== null && rateLimitDelay <= MAX_RATE_LIMIT_WAIT_MS) {
+        await new Promise((resolve) => setTimeout(resolve, rateLimitDelay));
         continue;
       }
 
