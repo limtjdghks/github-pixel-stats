@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-09-09T20:59:13.000Z",
+  "updatedAt": "2026-09-10T20:55:01.000Z",
   "commits": {
     "1054572471:07f80cd3177bf1b5169b434366b4b0e83ca97566": {
       "repositoryId": 1054572471,
@@ -6206,15 +6206,6 @@
       "sha": "fdf19515da8d924ed2cb346673289d4dbad06eae",
       "authoredAt": "2026-03-26T12:49:38.000+09:00",
       "languages": []
-    },
-    "967207826:5b484074296ee036a07b6908588aec070f4ec905": {
-      "repositoryId": 967207826,
-      "repository": "limtjdghks/limtjdghks.github.io",
-      "sha": "5b484074296ee036a07b6908588aec070f4ec905",
-      "authoredAt": "2025-09-10T15:17:44.000+09:00",
-      "languages": [
-        "HTML"
-      ]
     },
     "967207826:bc9bf0cac2d70491dae3531aea6777b02c21179b": {
       "repositoryId": 967207826,
