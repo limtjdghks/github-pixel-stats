@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "username": "__CURRENT_USERNAME__",
+  "classifier": {
+    "version": 1,
+    "linguistVersion": "9.7.0"
+  },
+  "updatedAt": "2026-09-12T23:59:59.000Z",
+  "commits": {
+    "101:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+      "repositoryId": 101,
+      "repository": "fixture-org/alpha-project",
+      "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "authoredAt": "2026-09-09T00:00:00.000Z",
+      "languages": ["CSS", "HTML", "JavaScript", "Python", "Rust", "TypeScript"]
+    },
+    "101:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+      "repositoryId": 101,
+      "repository": "fixture-org/alpha-project",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "authoredAt": "2026-09-10T12:30:00.000Z",
+      "languages": ["Go", "Java", "JavaScript", "Ruby", "Shell", "TypeScript"]
+    },
+    "102:cccccccccccccccccccccccccccccccccccccccc": {
+      "repositoryId": 102,
+      "repository": "fixture-org/alpha-library",
+      "sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "authoredAt": "2026-09-12T23:59:59.000Z",
+      "languages": ["C#", "CSS", "Kotlin", "Python", "Swift", "TypeScript"]
+    }
+  }
+}
