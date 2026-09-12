@@ -1,0 +1,82 @@
+{
+  "username": "fixture-beta",
+  "period": {
+    "from": "2026-09-10T00:00:00.000Z",
+    "to": "2026-09-12T23:59:59.000Z"
+  },
+  "searchCommits": {
+    "path": "/search/commits",
+    "pages": [
+      {
+        "query": {
+          "q": "author:fixture-beta author-date:2026-09-10T00:00:00Z..2026-09-12T23:59:59Z is:public merge:false",
+          "sort": "author-date",
+          "order": "asc",
+          "per_page": "100",
+          "page": "1"
+        },
+        "body": {
+          "total_count": 1,
+          "incomplete_results": false,
+          "items": [
+            {
+              "sha": "dddddddddddddddddddddddddddddddddddddddd",
+              "commit": { "author": { "date": "2026-09-11T00:00:00.000Z" } },
+              "repository": { "id": 201, "full_name": "fixture-org/beta-project" }
+            }
+          ]
+        }
+      }
+    ],
+    "expected": [
+      {
+        "repositoryId": 201,
+        "repository": "fixture-org/beta-project",
+        "sha": "dddddddddddddddddddddddddddddddddddddddd",
+        "authoredAt": "2026-09-11T00:00:00.000Z"
+      }
+    ]
+  },
+  "commitDetails": {
+    "path": "/repos/fixture-org/beta-project/commits/dddddddddddddddddddddddddddddddddddddddd",
+    "repository": "fixture-org/beta-project",
+    "sha": "dddddddddddddddddddddddddddddddddddddddd",
+    "pages": [
+      {
+        "query": { "per_page": "100", "page": "1" },
+        "body": {
+          "files": [
+            { "filename": "README.md" }
+          ]
+        }
+      }
+    ],
+    "expectedFilenames": ["README.md"]
+  },
+  "userProfile": {
+    "path": "/users/fixture-beta",
+    "query": {},
+    "body": { "public_repos": 1 }
+  },
+  "ownedRepositories": {
+    "path": "/users/fixture-beta/repos",
+    "pages": [
+      {
+        "query": {
+          "type": "owner",
+          "sort": "full_name",
+          "direction": "asc",
+          "per_page": "100",
+          "page": "1"
+        },
+        "body": [
+          { "fork": false, "private": false, "stargazers_count": 0 }
+        ]
+      }
+    ]
+  },
+  "expectedProfileStats": {
+    "publicRepositories": 1,
+    "stars": 0
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "username": "fixture-alpha",
+  "period": {
+    "from": "2026-09-09T00:00:00.000Z",
+    "to": "2026-09-12T23:59:59.000Z"
+  },
+  "searchCommits": {
+    "path": "/search/commits",
+    "pages": [
+      {
+        "query": {
+          "q": "author:fixture-alpha author-date:2026-09-09T00:00:00Z..2026-09-12T23:59:59Z is:public merge:false",
+          "sort": "author-date",
+          "order": "asc",
+          "per_page": "100",
+          "page": "1"
+        },
+        "headers": {
+          "link": "<https://api.github.com/search/commits?page=2>; rel=\"next\""
+        },
+        "body": {
+          "total_count": 3,
+          "incomplete_results": false,
+          "items": [
+            {
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "commit": { "author": { "date": "2026-09-09T00:00:00.000Z" } },
+              "repository": { "id": 101, "full_name": "fixture-org/alpha-project" }
+            },
+            {
+              "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "commit": { "author": { "date": "2026-09-10T12:30:00.000Z" } },
+              "repository": { "id": 101, "full_name": "fixture-org/alpha-project" }
+            }
+          ]
+        }
+      },
+      {
+        "query": {
+          "q": "author:fixture-alpha author-date:2026-09-09T00:00:00Z..2026-09-12T23:59:59Z is:public merge:false",
+          "sort": "author-date",
+          "order": "asc",
+          "per_page": "100",
+          "page": "2"
+        },
+        "body": {
+          "total_count": 3,
+          "incomplete_results": false,
+          "items": [
+            {
+              "sha": "cccccccccccccccccccccccccccccccccccccccc",
+              "commit": { "author": { "date": "2026-09-12T23:59:59.000Z" } },
+              "repository": { "id": 102, "full_name": "fixture-org/alpha-library" }
+            }
+          ]
+        }
+      }
+    ],
+    "expected": [
+      {
+        "repositoryId": 101,
+        "repository": "fixture-org/alpha-project",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "authoredAt": "2026-09-09T00:00:00.000Z"
+      },
+      {
+        "repositoryId": 101,
+        "repository": "fixture-org/alpha-project",
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "authoredAt": "2026-09-10T12:30:00.000Z"
+      },
+      {
+        "repositoryId": 102,
+        "repository": "fixture-org/alpha-library",
+        "sha": "cccccccccccccccccccccccccccccccccccccccc",
+        "authoredAt": "2026-09-12T23:59:59.000Z"
+      }
+    ]
+  },
+  "commitDetails": {
+    "path": "/repos/fixture-org/alpha-project/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "repository": "fixture-org/alpha-project",
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "pages": [
+      {
+        "query": { "per_page": "100", "page": "1" },
+        "headers": {
+          "link": "<https://api.github.com/repos/fixture-org/alpha-project/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?page=2>; rel=\"next\""
+        },
+        "body": {
+          "files": [
+            { "filename": "src/index.ts", "previous_filename": "src/main.ts" }
+          ]
+        }
+      },
+      {
+        "query": { "per_page": "100", "page": "2" },
+        "body": {
+          "files": [
+            { "filename": "styles/card.css" }
+          ]
+        }
+      }
+    ],
+    "expectedFilenames": ["src/index.ts", "src/main.ts", "styles/card.css"]
+  },
+  "userProfile": {
+    "path": "/users/fixture-alpha",
+    "query": {},
+    "body": { "public_repos": 4 }
+  },
+  "ownedRepositories": {
+    "path": "/users/fixture-alpha/repos",
+    "pages": [
+      {
+        "query": {
+          "type": "owner",
+          "sort": "full_name",
+          "direction": "asc",
+          "per_page": "100",
+          "page": "1"
+        },
+        "headers": {
+          "link": "<https://api.github.com/users/fixture-alpha/repos?page=2>; rel=\"next\""
+        },
+        "body": [
+          { "fork": false, "private": false, "stargazers_count": 3 },
+          { "fork": true, "private": false, "stargazers_count": 50 },
+          { "fork": false, "private": true, "stargazers_count": 80 }
+        ]
+      },
+      {
+        "query": {
+          "type": "owner",
+          "sort": "full_name",
+          "direction": "asc",
+          "per_page": "100",
+          "page": "2"
+        },
+        "body": [
+          { "fork": false, "private": false, "stargazers_count": 4 }
+        ]
+      }
+    ]
+  },
+  "expectedProfileStats": {
+    "publicRepositories": 4,
+    "stars": 7
+  }
+}

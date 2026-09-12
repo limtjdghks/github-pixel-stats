@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "username": "__CURRENT_USERNAME__",
+  "generatedAt": "2026-09-12T23:59:59.000Z",
+  "period": {
+    "from": "2026-09-09T00:00:00.000Z",
+    "to": "2026-09-12T23:59:59.000Z",
+    "label": "Last 12 months"
+  },
+  "stats": {
+    "commits": 3,
+    "publicRepositories": 4,
+    "stars": 7
+  },
+  "languages": [
+    { "name": "TypeScript", "commitCount": 3, "share": 0.166667, "filledSegments": 2, "color": "#3178c6" },
+    { "name": "CSS", "commitCount": 2, "share": 0.111111, "filledSegments": 1, "color": "#663399" },
+    { "name": "JavaScript", "commitCount": 2, "share": 0.111111, "filledSegments": 1, "color": "#f1e05a" },
+    { "name": "Python", "commitCount": 2, "share": 0.111111, "filledSegments": 1, "color": "#3572A5" },
+    { "name": "C#", "commitCount": 1, "share": 0.055556, "filledSegments": 1, "color": "#7355dd" }
+  ],
+  "activity": {
+    "timezone": "UTC",
+    "days": [
+      { "date": "2026-09-09", "commits": 1 },
+      { "date": "2026-09-10", "commits": 1 },
+      { "date": "2026-09-11", "commits": 0 },
+      { "date": "2026-09-12", "commits": 1 }
+    ]
+  },
+  "source": {
+    "commitScope": "public-default-branches",
+    "languageMetric": "commits-touching-language"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "username": "__CURRENT_USERNAME__",
+  "classifier": {
+    "version": 1,
+    "linguistVersion": "9.7.0"
+  },
+  "updatedAt": "2026-09-12T23:59:59.000Z",
+  "commits": {
+    "201:dddddddddddddddddddddddddddddddddddddddd": {
+      "repositoryId": 201,
+      "repository": "fixture-org/beta-project",
+      "sha": "dddddddddddddddddddddddddddddddddddddddd",
+      "authoredAt": "2026-09-11T00:00:00.000Z",
+      "languages": []
+    }
+  }
+}
