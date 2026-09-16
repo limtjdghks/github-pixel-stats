@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-09-12T20:37:56.000Z",
+  "updatedAt": "2026-09-16T21:22:13.000Z",
   "commits": {
     "1054572471:07f80cd3177bf1b5169b434366b4b0e83ca97566": {
       "repositoryId": 1054572471,
@@ -5706,17 +5706,6 @@
         "TypeScript"
       ]
     },
-    "947120414:215d2e0252c04fa950264b77210054870745824d": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "215d2e0252c04fa950264b77210054870745824d",
-      "authoredAt": "2025-09-17T00:33:50.000+09:00",
-      "languages": [
-        "CSS",
-        "JavaScript",
-        "TypeScript"
-      ]
-    },
     "947120414:232ef4e82abb3bce6d51f03d4de3558d4cdedf44": {
       "repositoryId": 947120414,
       "repository": "DMU-NextLevel/front",
@@ -5788,15 +5777,6 @@
       "repository": "DMU-NextLevel/front",
       "sha": "54555f7af220e868a692add1aa80671dcdd159b2",
       "authoredAt": "2025-10-14T21:59:42.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:558e5798bcb307691ef324a4c8c3f1d08e585627": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "558e5798bcb307691ef324a4c8c3f1d08e585627",
-      "authoredAt": "2025-09-17T00:33:50.000+09:00",
       "languages": [
         "TypeScript"
       ]
@@ -6139,13 +6119,6 @@
       "repository": "limtjdghks/limtjdghks",
       "sha": "46e873e794ce7be8b6128d44f26db08ffb4a02e2",
       "authoredAt": "2026-09-09T23:17:50.000+09:00",
-      "languages": []
-    },
-    "950072186:4c0eafb82ec9b8290614a26578b694e4f9db71ff": {
-      "repositoryId": 950072186,
-      "repository": "limtjdghks/limtjdghks",
-      "sha": "4c0eafb82ec9b8290614a26578b694e4f9db71ff",
-      "authoredAt": "2025-09-16T16:26:06.000+09:00",
       "languages": []
     },
     "950072186:5415d4e5a6edbfe3c9062d295c8c05f372464b24": {
