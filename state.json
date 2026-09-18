@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-09-16T21:22:13.000Z",
+  "updatedAt": "2026-09-18T20:57:31.000Z",
   "commits": {
     "1054572471:07f80cd3177bf1b5169b434366b4b0e83ca97566": {
       "repositoryId": 1054572471,
@@ -119,13 +119,6 @@
       "repository": "DMUMC/9th-web-study",
       "sha": "a29410a4bbd1d503de971f480fd4a51ad6f3e101",
       "authoredAt": "2025-09-21T22:31:19.000+09:00",
-      "languages": []
-    },
-    "1054572471:bbd665e5facaee334ed8fb4b5180b1abe18a142c": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "bbd665e5facaee334ed8fb4b5180b1abe18a142c",
-      "authoredAt": "2025-09-18T10:37:37.000+09:00",
       "languages": []
     },
     "1054572471:c906e542769431176c5cf41d3e1f42e847d6baa1": {
