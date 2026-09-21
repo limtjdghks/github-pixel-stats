@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-09-18T20:57:31.000Z",
+  "updatedAt": "2026-09-21T22:01:21.000Z",
   "commits": {
     "1054572471:07f80cd3177bf1b5169b434366b4b0e83ca97566": {
       "repositoryId": 1054572471,
@@ -103,24 +103,6 @@
         "TypeScript"
       ]
     },
-    "1054572471:9a6888f58d6763cca7a0642c6966a703dd623ae6": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "9a6888f58d6763cca7a0642c6966a703dd623ae6",
-      "authoredAt": "2025-09-21T18:32:31.000+09:00",
-      "languages": [
-        "CSS",
-        "HTML",
-        "TypeScript"
-      ]
-    },
-    "1054572471:a29410a4bbd1d503de971f480fd4a51ad6f3e101": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "a29410a4bbd1d503de971f480fd4a51ad6f3e101",
-      "authoredAt": "2025-09-21T22:31:19.000+09:00",
-      "languages": []
-    },
     "1054572471:c906e542769431176c5cf41d3e1f42e847d6baa1": {
       "repositoryId": 1054572471,
       "repository": "DMUMC/9th-web-study",
@@ -157,13 +139,6 @@
       "repository": "DMUMC/9th-web-study",
       "sha": "f82b7c4176df1b8ed37b15a33dd1a99727cf46ca",
       "authoredAt": "2025-12-21T04:44:07.000+09:00",
-      "languages": []
-    },
-    "1054572471:fb25e7dd5ef4870fb0ccfacc95e3e691e34f2685": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "fb25e7dd5ef4870fb0ccfacc95e3e691e34f2685",
-      "authoredAt": "2025-09-21T22:31:09.000+09:00",
       "languages": []
     },
     "1124262800:01053ba10bca4e81b4152010214f2de906d0e07b": {
