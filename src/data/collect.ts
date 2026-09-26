@@ -12,14 +12,15 @@ import {
   LINGUIST_VERSION,
   SNAPSHOT_SCHEMA_VERSION,
   STATE_SCHEMA_VERSION,
-  USERNAME,
 } from "../model.js";
 import { aggregateActivity } from "./activity.js";
 import { GitHubClient } from "./github-client.js";
 import { LinguistClassifier } from "./linguist.js";
 import { hasStateContentChanged, loadState } from "./state.js";
+import { parseUsername } from "../username.js";
 
 export interface CollectOptions {
+  username: string;
   token: string;
   statePath: string;
   now?: Date;
@@ -90,12 +91,15 @@ export async function collectStats(options: CollectOptions): Promise<CollectionR
   };
 
   try {
+    const requestedUsername = parseUsername(options.username);
     const from = twelveMonthsBefore(now);
     const client = new GitHubClient(options.token);
+    const profile = await client.getProfileStats(requestedUsername);
+    const username = profile.login;
     const classifier = await LinguistClassifier.loadDefault();
-    const loaded = await loadState(options.statePath);
+    const loaded = await loadState(options.statePath, username);
     const previous = loaded.cacheUsable ? loaded.state : null;
-    const searched = await client.searchCommits(USERNAME, from, now);
+    const searched = await client.searchCommits(username, from, now);
     metrics.searchedCommits = searched.length;
     const searchedKeys = new Set(searched.map(keyOf));
     const commits = new Map<string, CachedCommit>();
@@ -118,7 +122,7 @@ export async function collectStats(options: CollectOptions): Promise<CollectionR
       : 0;
     const provisional: CollectorState = {
       schemaVersion: STATE_SCHEMA_VERSION,
-      username: USERNAME,
+      username,
       classifier: { version: CLASSIFIER_VERSION, linguistVersion: LINGUIST_VERSION },
       updatedAt: now.toISOString(),
       commits: orderedRecord(commits),
@@ -128,13 +132,12 @@ export async function collectStats(options: CollectOptions): Promise<CollectionR
       ...provisional,
       updatedAt: stateChanged ? now.toISOString() : (previous?.updatedAt ?? now.toISOString()),
     };
-    const profile = await client.getProfileStats(USERNAME);
     const languages = aggregateLanguages([...commits.values()], classifier);
 
     return {
       snapshot: {
         schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-        username: USERNAME,
+        username,
         generatedAt: now.toISOString(),
         period: { from: from.toISOString(), to: now.toISOString(), label: "Last 12 months" },
         stats: {

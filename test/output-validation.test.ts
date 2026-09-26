@@ -27,6 +27,7 @@ function renderOutput(
   const statsSvg = renderStatsCard(snapshot);
   const languagesSvg = renderLanguagesCard(snapshot);
   return {
+    expectedUsername: state.username,
     snapshot,
     state,
     statsSvg,
@@ -61,6 +62,10 @@ for (const fixtureName of USER_FIXTURE_NAMES) {
     const output = await buildOutput(fixtureName);
 
     assert.doesNotThrow(() => validateGeneratedOutput(output));
+    for (const svg of [output.statsSvg, output.languagesSvg]) {
+      assert.match(svg, new RegExp(`<title[^>]*>${fixtureName} `));
+      assert.match(svg, new RegExp(`<desc[^>]*>[\\s\\S]*?${fixtureName}`));
+    }
   });
 }
 
@@ -112,8 +117,8 @@ const snapshotCases: Array<{
   },
   {
     name: "unexpected snapshot username",
-    mutate: (output) => Object.assign(output.snapshot, { username: "fixture-alpha" }),
-    expected: /unexpected username/,
+    mutate: (output) => Object.assign(output.snapshot, { username: "fixture-beta" }),
+    expected: /username/,
   },
   {
     name: "activity date sequence mismatch",
@@ -165,6 +170,34 @@ for (const fixtureCase of snapshotCases) {
 
     assert.throws(() => validateGeneratedOutput(output), fixtureCase.expected);
   });
+}
+
+test("validation rejects state from another fixture user", async () => {
+  const output = cloneOutput(await buildOutput("fixture-alpha"));
+  output.state.username = "fixture-beta";
+
+  assert.throws(() => validateGeneratedOutput(output), /usernames differ/);
+});
+
+test("validation rejects a different requested user", async () => {
+  const output = cloneOutput(await buildOutput("fixture-alpha"));
+  output.expectedUsername = "fixture-beta";
+
+  assert.throws(() => validateGeneratedOutput(output), /unexpected username/);
+});
+
+for (const card of ["statsSvg", "languagesSvg"] as const) {
+  for (const element of ["title", "desc"] as const) {
+    test(`validation rejects a stale ${card} ${element} username`, async () => {
+      const output = cloneOutput(await buildOutput("fixture-alpha"));
+      output[card] = output[card].replace(
+        new RegExp(`(<${element}[^>]*>)fixture-alpha`),
+        "$1fixture-beta",
+      );
+
+      assert.throws(() => validateGeneratedOutput(output), /unexpected username/);
+    });
+  }
 }
 
 test("validation rejects a state and snapshot commit total mismatch", async () => {

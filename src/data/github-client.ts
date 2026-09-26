@@ -1,4 +1,5 @@
 import type { SearchCommit } from "../model.js";
+import { parseUsername, usernamesEqual } from "../username.js";
 
 interface SearchResponse {
   total_count: number;
@@ -15,6 +16,7 @@ interface CommitResponse {
 }
 
 interface UserResponse {
+  login: string;
   public_repos: number;
 }
 
@@ -101,14 +103,18 @@ export class GitHubClient {
     }
   }
 
-  async getProfileStats(username: string): Promise<{ publicRepositories: number; stars: number }> {
+  async getProfileStats(username: string): Promise<{ login: string; publicRepositories: number; stars: number }> {
     const user = await this.request<UserResponse>(`/users/${username}`);
+    const login = parseUsername(user.data.login);
+    if (!usernamesEqual(username, login)) {
+      throw new Error(`GitHub returned an unexpected login for ${username}.`);
+    }
     let stars = 0;
     let page = 1;
 
     while (true) {
       const response = await this.request<RepositoryResponse[]>(
-        `/users/${username}/repos`,
+        `/users/${login}/repos`,
         new URLSearchParams({ type: "owner", sort: "full_name", direction: "asc", per_page: "100", page: String(page) }),
       );
       stars += response.data
@@ -120,7 +126,7 @@ export class GitHubClient {
       page += 1;
     }
 
-    return { publicRepositories: user.data.public_repos, stars };
+    return { login, publicRepositories: user.data.public_repos, stars };
   }
 
   private async searchRange(username: string, from: number, to: number): Promise<SearchCommit[]> {

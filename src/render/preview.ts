@@ -16,10 +16,10 @@ function extractDescription(svg: string, fallback: string): string {
 }
 
 export function renderPreviewHtml(statsSvg: string, languagesSvg: string): string {
-  const statsAlt = extractDescription(statsSvg, "limtjdghks GitHub activity statistics");
+  const statsAlt = extractDescription(statsSvg, "GitHub activity statistics");
   const languagesAlt = extractDescription(
     languagesSvg,
-    "limtjdghks most committed languages",
+    "Most committed GitHub languages",
   );
 
   return `<!doctype html>

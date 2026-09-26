@@ -1,4 +1,3 @@
-export const USERNAME = "limtjdghks" as const;
 export const STATE_SCHEMA_VERSION = 1 as const;
 export const SNAPSHOT_SCHEMA_VERSION = 1 as const;
 export const CLASSIFIER_VERSION = 1 as const;
@@ -18,7 +17,7 @@ export interface CachedCommit extends SearchCommit {
 
 export interface CollectorState {
   schemaVersion: typeof STATE_SCHEMA_VERSION;
-  username: typeof USERNAME;
+  username: string;
   classifier: {
     version: typeof CLASSIFIER_VERSION;
     linguistVersion: typeof LINGUIST_VERSION;
@@ -45,7 +44,7 @@ export interface DailyActivity {
 
 export interface StatsSnapshot {
   schemaVersion: typeof SNAPSHOT_SCHEMA_VERSION;
-  username: typeof USERNAME;
+  username: string;
   generatedAt: string;
   period: {
     from: string;

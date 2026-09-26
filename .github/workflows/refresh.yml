@@ -69,9 +69,12 @@ jobs:
         run: npm run generate -- --state .state/state.json --next-state build/next-state.json --out dist
         env:
           GH_STATS_TOKEN: ${{ secrets.GH_STATS_TOKEN }}
+          GITHUB_USERNAME: ${{ vars.GITHUB_USERNAME || github.repository_owner }}
 
       - name: Validate generated output
         run: npm run validate:output -- --state build/next-state.json --out dist
+        env:
+          GITHUB_USERNAME: ${{ vars.GITHUB_USERNAME || github.repository_owner }}
 
       - name: Upload next state
         uses: actions/upload-artifact@v7

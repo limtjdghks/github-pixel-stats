@@ -2,9 +2,11 @@ import { XMLValidator } from "fast-xml-parser";
 import { LANGUAGE_BAR_SEGMENTS, LANGUAGES_CARD, STATS_CARD } from "../config.js";
 import type { LinguistClassifier } from "../data/linguist.js";
 import type { CachedCommit, CollectorState, LanguageStat, StatsSnapshot } from "../model.js";
-import { SNAPSHOT_SCHEMA_VERSION, USERNAME } from "../model.js";
+import { SNAPSHOT_SCHEMA_VERSION } from "../model.js";
+import { parseUsername, usernamesEqual } from "../username.js";
 
 export interface GeneratedOutput {
+  expectedUsername?: string;
   snapshot: unknown;
   state: CollectorState;
   statsSvg: string;
@@ -38,7 +40,7 @@ function assertLanguage(value: unknown, index: number): asserts value is Languag
 export function assertSnapshot(value: unknown): asserts value is StatsSnapshot {
   assert(isRecord(value), "data.json is not an object.");
   assert(value.schemaVersion === SNAPSHOT_SCHEMA_VERSION, "data.json has an unsupported schema version.");
-  assert(value.username === USERNAME, "data.json has an unexpected username.");
+  assert(typeof value.username === "string" && value.username === parseUsername(value.username), "data.json has an invalid username.");
   assert(typeof value.generatedAt === "string" && !Number.isNaN(Date.parse(value.generatedAt)), "data.json has an invalid generatedAt.");
   assert(isRecord(value.period), "data.json has no period.");
   assert(
@@ -109,6 +111,7 @@ export function assertSvg(svg: string, name: string, width: number, height: numb
 }
 
 export function validateGeneratedOutput({
+  expectedUsername,
   snapshot,
   state,
   statsSvg,
@@ -117,6 +120,10 @@ export function validateGeneratedOutput({
   classifier,
 }: GeneratedOutput): void {
   assertSnapshot(snapshot);
+  if (expectedUsername !== undefined) {
+    assert(usernamesEqual(snapshot.username, expectedUsername), "data.json has an unexpected username.");
+  }
+  assert(state.username === snapshot.username, "State and snapshot usernames differ.");
   assert(Object.keys(state.commits).length === snapshot.stats.commits, "State and snapshot commit totals differ.");
   const periodFrom = Date.parse(snapshot.period.from);
   const periodTo = Date.parse(snapshot.period.to);
@@ -149,6 +156,10 @@ export function validateGeneratedOutput({
 
   assertSvg(statsSvg, "stats.svg", STATS_CARD.width, STATS_CARD.height);
   assertSvg(languagesSvg, "languages.svg", LANGUAGES_CARD.width, LANGUAGES_CARD.height);
+  assert(statsSvg.includes(`<title id="stats-title">${snapshot.username} GitHub activity</title>`), "stats.svg has an unexpected username in its title.");
+  assert(statsSvg.includes(`<desc id="stats-desc">${snapshot.username}. `), "stats.svg has an unexpected username in its description.");
+  assert(languagesSvg.includes(`<title id="languages-title">${snapshot.username} most committed languages</title>`), "languages.svg has an unexpected username in its title.");
+  assert(languagesSvg.includes(`<desc id="languages-desc">${snapshot.username}. `), "languages.svg has an unexpected username in its description.");
   assert(STATS_CARD.height === LANGUAGES_CARD.height, "Card heights differ.");
   for (const language of snapshot.languages) {
     assert(languagesSvg.toLowerCase().includes(`fill="${language.color.toLowerCase()}"`), `languages.svg does not use ${language.name}'s color.`);

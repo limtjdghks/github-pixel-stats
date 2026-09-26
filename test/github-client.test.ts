@@ -53,6 +53,36 @@ function profileRoutes(fixture: GitHubResponsesFixture): MockRoute[] {
   ];
 }
 
+for (const login of ["other-account", "fixture/alpha"]) {
+  test(`profile lookup rejects an invalid GitHub login: ${login}`, async (t) => {
+    const assertComplete = mockGitHubRequests(t, [
+      { path: "/users/fixture-alpha", query: {}, body: { login, public_repos: 4 } },
+    ]);
+
+    await assert.rejects(
+      new GitHubClient("fixture-token").getProfileStats("fixture-alpha"),
+      /unexpected login|GitHub username/,
+    );
+    assertComplete();
+  });
+}
+
+test("profile lookup preserves GitHub login spelling for repository requests", async (t) => {
+  const { githubResponses } = await loadUserFixture("fixture-alpha");
+  const routes = profileRoutes(githubResponses);
+  const profile = routes[0];
+  assert.ok(profile);
+  const assertComplete = mockGitHubRequests(t, [
+    { ...profile, body: { ...githubResponses.userProfile.body, login: "Fixture-Alpha" } },
+    ...routes.slice(1).map((route) => ({ ...route, path: route.path.replace("/fixture-alpha/", "/Fixture-Alpha/") })),
+  ]);
+
+  const stats = await new GitHubClient("fixture-token").getProfileStats("fixture-alpha");
+
+  assert.equal(stats.login, "Fixture-Alpha");
+  assertComplete();
+});
+
 for (const fixtureName of USER_FIXTURE_NAMES) {
   test(`${fixtureName} searches commits with the registered pagination`, async (t) => {
     const { githubResponses } = await loadUserFixture(fixtureName);
