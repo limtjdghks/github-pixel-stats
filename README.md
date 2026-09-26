@@ -1,6 +1,6 @@
 # GitHub Pixel Stats
 
-GitHub Pixel Stats collects `limtjdghks`'s public GitHub activity and publishes two independent SVG cards for profile READMEs. The cards combine a pixel-style typeface and mascot with a soft grid layout, while the language card visualizes usage as segmented bars instead of raw totals.
+GitHub Pixel Stats collects a selected GitHub user's public activity and publishes two independent SVG cards for profile READMEs. The cards combine a pixel-style typeface and mascot with a soft grid layout, while the language card visualizes usage as segmented bars instead of raw totals.
 
 The cards use the approved stepped pixel frames, a white cat in a dark hoodie, and dimensions of `570 × 300` and `355 × 300`. The stats footer shows real daily activity: one cell per UTC author date, seven rows per week, including zero-commit days. The first and last dates can be partial days because the rolling collection period has exact timestamps. Each cell includes its date and commit count, and `data.json` exposes the same values in `activity.days`.
 
@@ -18,7 +18,7 @@ The snapshot covers the latest 12 months. Commit discovery is limited to public 
 ## Repository setup
 
 1. Create a public repository and add this project to its default branch.
-2. Create a fine-grained personal access token for `limtjdghks`. Keep repository access read-only and do not grant write access. Fine-grained tokens include read-only access to public repositories, which lets the collector inspect public contributions across repository owners.
+2. Create a fine-grained personal access token that can read public repositories for the selected user. Keep repository access read-only and do not grant write access. Fine-grained tokens include read-only access to public repositories, which lets the collector inspect public contributions across repository owners.
 3. Save the token as a repository Actions secret named `GH_STATS_TOKEN` under **Settings → Secrets and variables → Actions**.
 4. Open **Settings → Pages** and select **GitHub Actions** as the build and deployment source.
 5. Run **Refresh GitHub pixel stats** once from the **Actions** tab to create the first deployment and bootstrap the `stats-state` branch.
@@ -36,6 +36,19 @@ The jobs run in this order:
 3. `deploy` publishes the validated `dist` directory to the `github-pages` environment after the state is safely persisted.
 
 If `stats-state` exists without `state.json`, collection fails instead of silently rebuilding from an invalid cache. If collection, generation, or validation fails, deployment is skipped and the previous successful Pages output remains active.
+
+## 사용자명 설정과 여러 사용자 실행
+
+생성·검증 CLI는 `--username`을 먼저 사용하고, 인자가 없으면 환경 변수 `GITHUB_USERNAME`을 사용합니다. 두 값 모두 없거나 비어 있거나 GitHub 사용자명 형식에 맞지 않으면 오류가 발생합니다. 입력 양끝의 공백은 제거하며 사용자명 비교에서는 대소문자를 구분하지 않습니다. 카드와 저장 데이터에는 GitHub API가 반환한 `login` 표기를 사용합니다. 수집에는 `GH_STATS_TOKEN`도 필요합니다.
+
+```bash
+npm run generate -- --username octocat --state .state/octocat/state.json --next-state build/octocat/next-state.json --out dist/octocat
+npm run validate:output -- --username octocat --state build/octocat/next-state.json --out dist/octocat
+```
+
+여러 사용자를 수집할 때는 예시처럼 사용자별로 입력 state, 다음 state, 출력 디렉터리를 분리하세요. state·snapshot의 schema v1은 유지되며 기존 동일 사용자 캐시를 재사용할 수 있습니다. 다른 사용자의 캐시는 재사용하지 않고 새로 수집합니다. 기존 `stats-state/state.json`을 사용하는 개인 Pages 작업은 같은 사용자라면 그대로 이어서 사용할 수 있습니다.
+
+Pages 워크플로는 Actions 저장소 변수 `GITHUB_USERNAME`이 있으면 그 값을 사용하고, 없으면 `github.repository_owner`를 사용합니다. **Settings → Secrets and variables → Actions → Variables**에서 변수를 설정할 수 있습니다. 생성과 검증 단계는 동일한 사용자명을 사용합니다. 저장소 소유자가 아닌 사용자의 카드를 게시하려면 변수와 읽기 권한이 있는 `GH_STATS_TOKEN`을 함께 설정하세요.
 
 ## Add the cards to a profile README
 
