@@ -9,8 +9,9 @@
   "scripts": {
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "generate": "tsx src/cli/generate.ts",
-    "validate:output": "tsx src/cli/validate-output.ts",
+    "generate": "node --import tsx src/cli/generate.ts",
+    "build:fixture": "node --import tsx src/cli/build-fixture.ts",
+    "validate:output": "node --import tsx src/cli/validate-output.ts",
     "build": "npm run typecheck && npm run generate && npm run validate:output -- --state build/next-state.json --out dist"
   },
   "dependencies": {
