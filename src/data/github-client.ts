@@ -47,15 +47,25 @@ function commitKey(commit: SearchCommit): string {
   return `${commit.repositoryId}:${commit.sha}`;
 }
 
+function getRateLimitNumber(headers: Headers, name: string): number | null {
+  const value = headers.get(name)?.trim();
+  if (!value) {
+    return null;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
 function getRateLimitDelay(response: Response): number | null {
-  const retryAfter = Number(response.headers.get("retry-after"));
-  if (Number.isFinite(retryAfter) && retryAfter >= 0) {
+  const retryAfter = getRateLimitNumber(response.headers, "retry-after");
+  if (retryAfter !== null) {
     return Math.max(1_000, retryAfter * 1_000);
   }
 
   const remaining = response.headers.get("x-ratelimit-remaining");
-  const reset = Number(response.headers.get("x-ratelimit-reset"));
-  if (remaining === "0" && Number.isFinite(reset)) {
+  const reset = getRateLimitNumber(response.headers, "x-ratelimit-reset");
+  if (remaining === "0" && reset !== null) {
     return Math.max(1_000, reset * 1_000 - Date.now() + 1_000);
   }
 
@@ -216,8 +226,11 @@ export class GitHubClient {
         continue;
       }
 
-      const rateReset = response.headers.get("x-ratelimit-reset");
-      const resetHint = rateReset ? ` Rate limit resets at ${new Date(Number(rateReset) * 1_000).toISOString()}.` : "";
+      const rateReset = getRateLimitNumber(response.headers, "x-ratelimit-reset");
+      const resetDate = rateReset === null ? null : new Date(rateReset * 1_000);
+      const resetHint = resetDate !== null && !Number.isNaN(resetDate.getTime())
+        ? ` Rate limit resets at ${resetDate.toISOString()}.`
+        : "";
       throw new Error(`GitHub API ${response.status} for ${path}.${resetHint}`);
     }
     throw new Error(`GitHub API retry loop ended unexpectedly for ${path}.`);
