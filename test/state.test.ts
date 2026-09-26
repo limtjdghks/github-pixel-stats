@@ -3,7 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { hasStateContentChanged, loadState } from "../src/data/state.js";
+import { hasStateContentChanged } from "../src/data/collection-model.js";
+import { loadState } from "../src/data/state.js";
 import { loadUserFixture } from "./helpers/load-user-fixture.js";
 
 test("loadState reuses a compatible v1 cache for the same account regardless of case", async (t) => {

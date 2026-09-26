@@ -1,6 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CollectionFailure, collectStats } from "../data/collect.js";
+import { GitHubClient } from "../data/github-client.js";
+import { LinguistClassifier } from "../data/linguist.js";
+import { loadState } from "../data/state.js";
 import { renderLanguagesCard, renderPreviewHtml, renderStatsCard } from "../render/index.js";
 import { parseFileOptions } from "./options.js";
 
@@ -10,7 +13,12 @@ async function main(): Promise<void> {
   if (!token) {
     throw new Error("GH_STATS_TOKEN is required.");
   }
-  const result = await collectStats({ username: options.username, token, statePath: options.statePath });
+  const result = await collectStats({ username: options.username }, {
+    github: new GitHubClient(token),
+    loadState: (username) => loadState(options.statePath, username),
+    loadClassifier: () => LinguistClassifier.loadDefault(),
+    now: () => new Date(),
+  });
   const statsSvg = renderStatsCard(result.snapshot);
   const languagesSvg = renderLanguagesCard(result.snapshot);
   const preview = renderPreviewHtml(statsSvg, languagesSvg);
