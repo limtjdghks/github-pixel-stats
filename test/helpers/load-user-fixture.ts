@@ -5,10 +5,7 @@ import {
   LINGUIST_VERSION,
   SNAPSHOT_SCHEMA_VERSION,
   STATE_SCHEMA_VERSION,
-  USERNAME,
 } from "../../src/model.js";
-
-const USERNAME_SENTINEL = "__CURRENT_USERNAME__" as const;
 
 export const USER_FIXTURE_NAMES = ["fixture-alpha", "fixture-beta"] as const;
 
@@ -58,20 +55,18 @@ export interface GitHubResponsesFixture {
   userProfile: {
     path: string;
     query: Record<string, string>;
-    body: { public_repos: number };
+    body: { login: string; public_repos: number };
   };
   ownedRepositories: {
     path: string;
     pages: Array<ApiPage<RepositoryResponseBody[]>>;
   };
   expectedProfileStats: {
+    login: string;
     publicRepositories: number;
     stars: number;
   };
 }
-
-type FixtureState = Omit<CollectorState, "username"> & { username: typeof USERNAME_SENTINEL };
-type FixtureSnapshot = Omit<StatsSnapshot, "username"> & { username: typeof USERNAME_SENTINEL };
 
 export interface UserFixture {
   id: UserFixtureName;
@@ -216,6 +211,8 @@ function assertGitHubResponsesFixture(value: unknown): asserts value is GitHubRe
     typeof value.userProfile.path !== "string" ||
     !isStringRecord(value.userProfile.query) ||
     !isRecord(value.userProfile.body) ||
+    typeof value.userProfile.body.login !== "string" ||
+    value.userProfile.body.login !== value.username ||
     !isNonNegativeInteger(value.userProfile.body.public_repos)
   ) {
     throw new Error("GitHub responses fixture has an invalid user profile definition.");
@@ -231,6 +228,7 @@ function assertGitHubResponsesFixture(value: unknown): asserts value is GitHubRe
 
   if (
     !isRecord(value.expectedProfileStats) ||
+    value.expectedProfileStats.login !== value.userProfile.body.login ||
     !isNonNegativeInteger(value.expectedProfileStats.publicRepositories) ||
     !isNonNegativeInteger(value.expectedProfileStats.stars)
   ) {
@@ -243,9 +241,9 @@ export function parseGitHubResponsesFixture(value: unknown): GitHubResponsesFixt
   return value;
 }
 
-function assertFixtureState(value: unknown): asserts value is FixtureState {
-  if (!isRecord(value) || value.username !== USERNAME_SENTINEL) {
-    throw new Error(`Fixture state username must be ${USERNAME_SENTINEL}.`);
+function assertFixtureState(value: unknown, expectedUsername: string): asserts value is CollectorState {
+  if (!isRecord(value) || value.username !== expectedUsername) {
+    throw new Error(`Fixture state username must be ${expectedUsername}.`);
   }
   if (
     value.schemaVersion !== STATE_SCHEMA_VERSION ||
@@ -278,9 +276,9 @@ function assertFixtureState(value: unknown): asserts value is FixtureState {
   }
 }
 
-function assertFixtureSnapshot(value: unknown): asserts value is FixtureSnapshot {
-  if (!isRecord(value) || value.username !== USERNAME_SENTINEL) {
-    throw new Error(`Fixture snapshot username must be ${USERNAME_SENTINEL}.`);
+function assertFixtureSnapshot(value: unknown, expectedUsername: string): asserts value is StatsSnapshot {
+  if (!isRecord(value) || value.username !== expectedUsername) {
+    throw new Error(`Fixture snapshot username must be ${expectedUsername}.`);
   }
   if (
     value.schemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
@@ -338,13 +336,16 @@ export async function loadUserFixture(name: UserFixtureName): Promise<UserFixtur
     readJson(new URL("snapshot.json", fixtureUrl)),
   ]);
   const parsedGitHubResponses = parseGitHubResponsesFixture(githubResponses);
-  assertFixtureState(state);
-  assertFixtureSnapshot(snapshot);
+  if (parsedGitHubResponses.username !== name) {
+    throw new Error(`Fixture ${name} has a mismatched GitHub username.`);
+  }
+  assertFixtureState(state, name);
+  assertFixtureSnapshot(snapshot, name);
 
   return {
     id: name,
     githubResponses: parsedGitHubResponses,
-    state: { ...state, username: USERNAME },
-    snapshot: { ...snapshot, username: USERNAME },
+    state,
+    snapshot,
   };
 }

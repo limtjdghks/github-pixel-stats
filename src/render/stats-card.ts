@@ -19,7 +19,7 @@ ${renderMetricIcon(icon, x + 12, 141, accent)}
 
 export function renderStatsCard(snapshot: StatsSnapshot): string {
   const { width, height } = STATS_CARD;
-  const description = `${snapshot.period.label}: ${formatCount(snapshot.stats.commits)} commits, ${formatCount(snapshot.stats.publicRepositories)} public repositories, and ${formatCount(snapshot.stats.stars)} stars. Daily activity is grouped by UTC author date. Updated ${formatDate(snapshot.generatedAt)}.`;
+  const description = `${snapshot.username}. ${snapshot.period.label}: ${formatCount(snapshot.stats.commits)} commits, ${formatCount(snapshot.stats.publicRepositories)} public repositories, and ${formatCount(snapshot.stats.stars)} stars. Daily activity is grouped by UTC author date. Updated ${formatDate(snapshot.generatedAt)}.`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="stats-title stats-desc" shape-rendering="crispEdges">
 <title id="stats-title">${escapeXml(snapshot.username)} GitHub activity</title>
 <desc id="stats-desc">${escapeXml(description)}</desc>
@@ -28,7 +28,7 @@ ${renderFrame(width, height)}
 <g clip-path="url(#panel-clip)">
 <rect x="6" y="6" width="558" height="288" fill="url(#panel-fill)"/>
 <text x="20" y="85" font-size="80" textLength="378" lengthAdjust="spacingAndGlyphs">${escapeXml(snapshot.username.toUpperCase())}</text>
-<text x="21" y="108" font-size="22" font-weight="700">SeongHwan · <tspan class="muted">GitHub activity</tspan></text>
+<text x="21" y="108" font-size="22" font-weight="700">GitHub activity</text>
 ${renderMascot(414, 20)}
 <path d="M515 6V120M6 120H564M201 120V225M394 120V225" stroke="${CARD_COLORS.grid}" stroke-width="1" fill="none"/>
 <g aria-hidden="true">

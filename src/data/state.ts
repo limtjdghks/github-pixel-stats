@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { CachedCommit, CollectorState } from "../model.js";
-import { CLASSIFIER_VERSION, LINGUIST_VERSION, STATE_SCHEMA_VERSION, USERNAME } from "../model.js";
+import { CLASSIFIER_VERSION, LINGUIST_VERSION, STATE_SCHEMA_VERSION } from "../model.js";
+import { parseUsername, usernamesEqual } from "../username.js";
 
 export interface LoadedState {
   state: CollectorState | null;
@@ -35,7 +36,8 @@ function assertCachedCommit(key: string, value: unknown): asserts value is Cache
   }
 }
 
-export async function loadState(path: string): Promise<LoadedState> {
+export async function loadState(path: string, expectedUsername: string): Promise<LoadedState> {
+  const expected = parseUsername(expectedUsername);
   let source: string;
   try {
     source = await readFile(path, "utf8");
@@ -55,7 +57,13 @@ export async function loadState(path: string): Promise<LoadedState> {
   if (!isRecord(parsed)) {
     throw new Error(`State file ${path} has an invalid shape.`);
   }
-  if (parsed.schemaVersion !== STATE_SCHEMA_VERSION || parsed.username !== USERNAME) {
+  if (parsed.schemaVersion !== STATE_SCHEMA_VERSION) {
+    return { state: null, cacheUsable: false };
+  }
+  if (typeof parsed.username !== "string" || parsed.username !== parseUsername(parsed.username)) {
+    throw new Error(`State file ${path} has an invalid username.`);
+  }
+  if (!usernamesEqual(parsed.username, expected)) {
     return { state: null, cacheUsable: false };
   }
   if (!isRecord(parsed.classifier)) {
@@ -91,5 +99,5 @@ export function hasStateContentChanged(previous: CollectorState | null, next: Co
   if (!previous) {
     return true;
   }
-  return JSON.stringify(previous.commits) !== JSON.stringify(next.commits);
+  return previous.username !== next.username || JSON.stringify(previous.commits) !== JSON.stringify(next.commits);
 }

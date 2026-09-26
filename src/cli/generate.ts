@@ -1,22 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CollectionFailure, collectStats } from "../data/collect.js";
-import { USERNAME } from "../model.js";
 import { renderLanguagesCard, renderPreviewHtml, renderStatsCard } from "../render/index.js";
 import { parseFileOptions } from "./options.js";
 
 async function main(): Promise<void> {
-  const options = parseFileOptions(process.argv.slice(2));
+  const options = parseFileOptions(process.argv.slice(2), process.env.GITHUB_USERNAME);
   const token = process.env.GH_STATS_TOKEN?.trim();
   if (!token) {
     throw new Error("GH_STATS_TOKEN is required.");
   }
-  const requestedUsername = process.env.GITHUB_USERNAME?.trim() || USERNAME;
-  if (requestedUsername !== USERNAME) {
-    throw new Error(`This service is configured for ${USERNAME}.`);
-  }
-
-  const result = await collectStats({ token, statePath: options.statePath });
+  const result = await collectStats({ username: options.username, token, statePath: options.statePath });
   const statsSvg = renderStatsCard(result.snapshot);
   const languagesSvg = renderLanguagesCard(result.snapshot);
   const preview = renderPreviewHtml(statsSvg, languagesSvg);
