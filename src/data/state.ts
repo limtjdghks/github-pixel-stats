@@ -94,10 +94,3 @@ export async function loadState(path: string, expectedUsername: string): Promise
     cacheUsable: true,
   };
 }
-
-export function hasStateContentChanged(previous: CollectorState | null, next: CollectorState): boolean {
-  if (!previous) {
-    return true;
-  }
-  return previous.username !== next.username || JSON.stringify(previous.commits) !== JSON.stringify(next.commits);
-}
