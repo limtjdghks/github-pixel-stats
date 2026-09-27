@@ -1,80 +1,16 @@
 import type { SearchCommit } from "../model.js";
-import { parseUsername, usernamesEqual } from "../username.js";
+import {
+  commitKey,
+  GitHubRequestError,
+  GitHubRestPageSource,
+  MAX_RATE_LIMIT_WAIT_MS,
+  MAX_RETRIES,
+  splitSearchInterval,
+  type PageRequest,
+  type PageResult,
+} from "./github-pages.js";
 
-interface SearchResponse {
-  total_count: number;
-  incomplete_results: boolean;
-  items: Array<{
-    sha: string;
-    commit: { author: { date: string } | null };
-    repository: { id: number; full_name: string };
-  }>;
-}
-
-interface CommitResponse {
-  files?: Array<{ filename: string; previous_filename?: string }>;
-}
-
-interface UserResponse {
-  login: string;
-  public_repos: number;
-}
-
-interface RepositoryResponse {
-  fork: boolean;
-  private: boolean;
-  stargazers_count: number;
-}
-
-interface ApiResponse<T> {
-  data: T;
-  headers: Headers;
-}
-
-const API_VERSION = "2022-11-28";
-const MAX_RETRIES = 3;
-const MAX_RATE_LIMIT_WAIT_MS = 60_000;
-
-function hasNextPage(link: string | null): boolean {
-  return link?.split(",").some((part) => /rel="next"/.test(part)) ?? false;
-}
-
-function toApiTimestamp(timestamp: number): string {
-  return new Date(timestamp).toISOString().replace(/\.\d{3}Z$/, "Z");
-}
-
-function commitKey(commit: SearchCommit): string {
-  return `${commit.repositoryId}:${commit.sha}`;
-}
-
-function getRateLimitNumber(headers: Headers, name: string): number | null {
-  const value = headers.get(name)?.trim();
-  if (!value) {
-    return null;
-  }
-
-  const number = Number(value);
-  return Number.isFinite(number) && number >= 0 ? number : null;
-}
-
-function getRateLimitDelay(response: Response): number | null {
-  const retryAfter = getRateLimitNumber(response.headers, "retry-after");
-  if (retryAfter !== null) {
-    return Math.max(1_000, retryAfter * 1_000);
-  }
-
-  const remaining = response.headers.get("x-ratelimit-remaining");
-  const reset = getRateLimitNumber(response.headers, "x-ratelimit-reset");
-  if (remaining === "0" && reset !== null) {
-    return Math.max(1_000, reset * 1_000 - Date.now() + 1_000);
-  }
-
-  return null;
-}
-
-export class GitHubClient {
-  constructor(private readonly token: string) {}
-
+export class GitHubClient extends GitHubRestPageSource {
   async searchCommits(username: string, from: Date, to: Date): Promise<SearchCommit[]> {
     const commits = await this.searchRange(username, from.getTime(), to.getTime());
     return [...new Map(commits.map((commit) => [commitKey(commit), commit])).values()].sort(
@@ -86,27 +22,14 @@ export class GitHubClient {
     const filenames: string[] = [];
     let fileCount = 0;
     let page = 1;
-
     while (true) {
-      const response = await this.request<CommitResponse>(
-        `/repos/${repository}/commits/${sha}`,
-        new URLSearchParams({ per_page: "100", page: String(page) }),
-      );
-      if (!Array.isArray(response.data.files)) {
-        throw new Error(`GitHub did not return a file list for ${repository}@${sha}.`);
-      }
-
-      fileCount += response.data.files.length;
-      for (const file of response.data.files) {
-        filenames.push(file.filename);
-        if (file.previous_filename) {
-          filenames.push(file.previous_filename);
-        }
-      }
+      const response = await this.requestWithRetry({ kind: "files", repository, sha, page });
+      fileCount += response.fileCount;
+      filenames.push(...response.filenames);
       if (fileCount >= 3_000) {
         throw new Error(`Commit ${repository}@${sha} reached GitHub's 3,000-file response limit.`);
       }
-      if (!hasNextPage(response.headers.get("link"))) {
+      if (!response.hasNext) {
         return filenames;
       }
       page += 1;
@@ -114,125 +37,64 @@ export class GitHubClient {
   }
 
   async getProfileStats(username: string): Promise<{ login: string; publicRepositories: number; stars: number }> {
-    const user = await this.request<UserResponse>(`/users/${username}`);
-    const login = parseUsername(user.data.login);
-    if (!usernamesEqual(username, login)) {
-      throw new Error(`GitHub returned an unexpected login for ${username}.`);
-    }
+    const user = await this.requestWithRetry({ kind: "profile", username });
     let stars = 0;
     let page = 1;
-
     while (true) {
-      const response = await this.request<RepositoryResponse[]>(
-        `/users/${login}/repos`,
-        new URLSearchParams({ type: "owner", sort: "full_name", direction: "asc", per_page: "100", page: String(page) }),
-      );
-      stars += response.data
-        .filter((repository) => !repository.fork && !repository.private)
-        .reduce((sum, repository) => sum + repository.stargazers_count, 0);
-      if (!hasNextPage(response.headers.get("link"))) {
+      const response = await this.requestWithRetry({ kind: "repositories", username: user.login, page });
+      stars += response.stars;
+      if (!response.hasNext) {
         break;
       }
       page += 1;
     }
-
-    return { login, publicRepositories: user.data.public_repos, stars };
+    return { login: user.login, publicRepositories: user.publicRepositories, stars };
   }
 
   private async searchRange(username: string, from: number, to: number): Promise<SearchCommit[]> {
-    const query = `author:${username} author-date:${toApiTimestamp(from)}..${toApiTimestamp(to)} is:public merge:false`;
-    const first = await this.request<SearchResponse>(
-      "/search/commits",
-      new URLSearchParams({ q: query, sort: "author-date", order: "asc", per_page: "100", page: "1" }),
-    );
-
-    if (first.data.incomplete_results || first.data.total_count >= 1_000) {
+    const first = await this.requestWithRetry({ kind: "search", username, from, to, page: 1 });
+    if (first.incomplete || first.totalCount >= 1_000) {
       return this.splitSearchRange(username, from, to);
     }
-
-    const commits = this.mapSearchItems(first.data);
+    const commits = first.commits;
     let page = 1;
-    let nextPage = hasNextPage(first.headers.get("link"));
+    let nextPage = first.hasNext;
     while (nextPage) {
       page += 1;
-      const response = await this.request<SearchResponse>(
-        "/search/commits",
-        new URLSearchParams({ q: query, sort: "author-date", order: "asc", per_page: "100", page: String(page) }),
-      );
-      if (response.data.incomplete_results) {
+      const response = await this.requestWithRetry({ kind: "search", username, from, to, page });
+      if (response.incomplete) {
         return this.splitSearchRange(username, from, to);
       }
-      commits.push(...this.mapSearchItems(response.data));
-      nextPage = hasNextPage(response.headers.get("link"));
+      commits.push(...response.commits);
+      nextPage = response.hasNext;
     }
     const uniqueCommitCount = new Set(commits.map(commitKey)).size;
-    if (uniqueCommitCount !== commits.length) {
-      return this.splitSearchRange(username, from, to);
-    }
-    if (commits.length !== first.data.total_count) {
+    if (uniqueCommitCount !== commits.length || commits.length !== first.totalCount) {
       return this.splitSearchRange(username, from, to);
     }
     return commits;
   }
 
   private async splitSearchRange(username: string, from: number, to: number): Promise<SearchCommit[]> {
-    if (to - from < 2_000) {
-      throw new Error(`Commit search is incomplete within a one-second range: ${toApiTimestamp(from)}.`);
-    }
-    const midpoint = Math.floor((from + to) / 2_000) * 1_000;
-    if (midpoint <= from || midpoint >= to) {
-      throw new Error(`Commit search range cannot be split safely: ${toApiTimestamp(from)}..${toApiTimestamp(to)}.`);
-    }
-    const left = await this.searchRange(username, from, midpoint);
-    const right = await this.searchRange(username, midpoint + 1_000, to);
+    const [leftRange, rightRange] = splitSearchInterval(from, to);
+    const left = await this.searchRange(username, leftRange.from, leftRange.to);
+    const right = await this.searchRange(username, rightRange.from, rightRange.to);
     return [...left, ...right];
   }
 
-  private mapSearchItems(response: SearchResponse): SearchCommit[] {
-    return response.items.map((item) => {
-      if (!item.commit.author?.date) {
-        throw new Error(`Commit ${item.repository.full_name}@${item.sha} has no author date.`);
+  private async requestWithRetry<T extends PageRequest>(request: T): Promise<Extract<PageResult, { kind: T["kind"] }>> {
+    const signal = new AbortController().signal;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.requestPage(request, signal) as Extract<PageResult, { kind: T["kind"] }>;
+      } catch (error) {
+        if (!(error instanceof GitHubRequestError) || error.retryDelayMs === null
+          || error.retryDelayMs > MAX_RATE_LIMIT_WAIT_MS || attempt >= MAX_RETRIES) {
+          throw error;
+        }
+        const delay = error.retryDelayMs;
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
-      return {
-        repositoryId: item.repository.id,
-        repository: item.repository.full_name,
-        sha: item.sha,
-        authoredAt: item.commit.author.date,
-      };
-    });
-  }
-
-  private async request<T>(path: string, search = new URLSearchParams()): Promise<ApiResponse<T>> {
-    const url = new URL(`https://api.github.com${path}`);
-    url.search = search.toString();
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${this.token}`,
-          "User-Agent": "github-pixel-stats",
-          "X-GitHub-Api-Version": API_VERSION,
-        },
-      });
-      if (response.ok) {
-        return { data: (await response.json()) as T, headers: response.headers };
-      }
-
-      const rateLimitDelay = getRateLimitDelay(response);
-      const canRetry = (response.status === 403 || response.status === 429) && attempt < MAX_RETRIES;
-      if (canRetry && rateLimitDelay !== null && rateLimitDelay <= MAX_RATE_LIMIT_WAIT_MS) {
-        await new Promise((resolve) => setTimeout(resolve, rateLimitDelay));
-        continue;
-      }
-
-      const rateReset = getRateLimitNumber(response.headers, "x-ratelimit-reset");
-      const resetDate = rateReset === null ? null : new Date(rateReset * 1_000);
-      const resetHint = resetDate !== null && !Number.isNaN(resetDate.getTime())
-        ? ` Rate limit resets at ${resetDate.toISOString()}.`
-        : "";
-      throw new Error(`GitHub API ${response.status} for ${path}.${resetHint}`);
     }
-    throw new Error(`GitHub API retry loop ended unexpectedly for ${path}.`);
   }
 }
