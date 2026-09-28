@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "functions": {
+    "api/health.ts": {
+      "regions": ["iad1"],
+      "maxDuration": 10
+    },
+    "api/card.ts": {
+      "regions": ["iad1"],
+      "maxDuration": 10,
+      "includeFiles": "assets/fonts/**/*.woff2"
+    },
+    "api/cron.ts": {
+      "regions": ["iad1"],
+      "maxDuration": 10,
+      "includeFiles": "data/languages.yml"
+    }
+  },
+  "rewrites": [
+    { "source": "/healthz", "destination": "/api/health" },
+    { "source": "/:username/stats.svg", "destination": "/api/card?card=stats" },
+    { "source": "/:username/languages.svg", "destination": "/api/card?card=languages" }
+  ]
+}
