@@ -74,6 +74,12 @@ The language card is a separate image and can be placed independently.
 
 To place both cards on one row, wrap the two images in the same paragraph and keep their widths at `570` and `355`.
 
+## 마스코트 preset 추가
+
+`stats.svg`의 기본 마스코트 ID는 `cat`이며, 현재 등록된 preset도 기존 고양이 하나입니다. 마스코트는 카드의 `94 × 94` 슬롯에 그리는 정적 SVG renderer입니다. 새 preset을 추가하려면 해당 renderer를 작성하고 `src/render/mascot-registry.ts`의 registry에 ID와 renderer를 등록하세요. `MascotId`는 registry 키에서 생성되므로 ID 목록을 별도로 수정할 필요가 없습니다. `resolveMascotId()`는 등록된 ID의 정확한 일치만 허용하고 그 외의 값은 `cat`으로 되돌립니다.
+
+등록 전에 제작자, 원본 출처 URL 또는 파일, 라이선스, 서비스와 저장소에서 사용할 권리나 허가 근거를 README 또는 `third_party/`에 기록하세요. 외부 리소스를 참조하지 않는 SVG인지 확인하고 fixture build와 출력 검증을 실행하세요. `languages.svg`에는 마스코트를 적용하지 않습니다. URL의 `mascot` query 연결은 호스팅 카드 endpoint 작업에서 진행합니다.
+
 ## Operations
 
 - Scheduled workflows may be delayed during periods of high GitHub Actions load. The manual trigger is the recovery path when a scheduled run is delayed or dropped.
