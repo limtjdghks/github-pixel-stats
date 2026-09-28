@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { LinguistClassifier } from "../src/data/linguist.js";
 import type { CollectorState, StatsSnapshot } from "../src/model.js";
-import { renderLanguagesCard, renderPreviewHtml, renderStatsCard } from "../src/render/index.js";
+import {
+  DEFAULT_MASCOT_ID,
+  getMascotRenderer,
+  renderLanguagesCard,
+  renderPreviewHtml,
+  renderStatsCard,
+} from "../src/render/index.js";
 import {
   validateGeneratedOutput,
   type GeneratedOutput,
@@ -24,7 +30,7 @@ function renderOutput(
   state: CollectorState,
   classifier: LinguistClassifier,
 ): ValidOutput {
-  const statsSvg = renderStatsCard(snapshot);
+  const statsSvg = renderStatsCard(snapshot, getMascotRenderer(DEFAULT_MASCOT_ID));
   const languagesSvg = renderLanguagesCard(snapshot);
   return {
     expectedUsername: state.username,

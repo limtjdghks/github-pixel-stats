@@ -3,7 +3,7 @@ import type { StatsSnapshot } from "../model.js";
 import { renderActivityGrid } from "./activity-grid.js";
 import { renderFrame, renderFrameDefs, steppedPath } from "./frame.js";
 import { renderCalendar, renderMetricIcon, type MetricIcon } from "./icons.js";
-import { renderMascot } from "./mascot.js";
+import type { MascotRenderer } from "./mascot-registry.js";
 import { escapeXml, formatCount, formatDate, renderFontStyles } from "./shared.js";
 
 function renderMetric(label: string, value: number, icon: MetricIcon, x: number, width: number, accent: string): string {
@@ -17,7 +17,7 @@ ${renderMetricIcon(icon, x + 12, 141, accent)}
 </g>`;
 }
 
-export function renderStatsCard(snapshot: StatsSnapshot): string {
+export function renderStatsCard(snapshot: StatsSnapshot, mascotRenderer: MascotRenderer): string {
   const { width, height } = STATS_CARD;
   const description = `${snapshot.username}. ${snapshot.period.label}: ${formatCount(snapshot.stats.commits)} commits, ${formatCount(snapshot.stats.publicRepositories)} public repositories, and ${formatCount(snapshot.stats.stars)} stars. Daily activity is grouped by UTC author date. Updated ${formatDate(snapshot.generatedAt)}.`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="stats-title stats-desc" shape-rendering="crispEdges">
@@ -29,7 +29,7 @@ ${renderFrame(width, height)}
 <rect x="6" y="6" width="558" height="288" fill="url(#panel-fill)"/>
 <text x="20" y="85" font-size="80" textLength="378" lengthAdjust="spacingAndGlyphs">${escapeXml(snapshot.username.toUpperCase())}</text>
 <text x="21" y="108" font-size="22" font-weight="700">GitHub activity</text>
-${renderMascot(414, 20)}
+${mascotRenderer(414, 20)}
 <path d="M515 6V120M6 120H564M201 120V225M394 120V225" stroke="${CARD_COLORS.grid}" stroke-width="1" fill="none"/>
 <g aria-hidden="true">
 <rect x="529" y="40" width="8" height="8" fill="${CARD_COLORS.cyan}"/>

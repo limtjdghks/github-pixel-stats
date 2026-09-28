@@ -1,7 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { LinguistClassifier } from "../data/linguist.js";
-import { renderLanguagesCard, renderPreviewHtml, renderStatsCard } from "../render/index.js";
+import {
+  DEFAULT_MASCOT_ID,
+  getMascotRenderer,
+  renderLanguagesCard,
+  renderPreviewHtml,
+  renderStatsCard,
+} from "../render/index.js";
 import { validateGeneratedOutput } from "../validation/output.js";
 import { loadUserFixture, USER_FIXTURE_NAMES } from "../../test/helpers/load-user-fixture.js";
 
@@ -11,7 +17,7 @@ async function main(): Promise<void> {
 
   for (const name of USER_FIXTURE_NAMES) {
     const fixture = await loadUserFixture(name);
-    const statsSvg = renderStatsCard(fixture.snapshot);
+    const statsSvg = renderStatsCard(fixture.snapshot, getMascotRenderer(DEFAULT_MASCOT_ID));
     const languagesSvg = renderLanguagesCard(fixture.snapshot);
     const preview = renderPreviewHtml(statsSvg, languagesSvg);
     validateGeneratedOutput({
