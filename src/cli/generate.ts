@@ -4,7 +4,13 @@ import { CollectionFailure, collectStats } from "../data/collect.js";
 import { GitHubClient } from "../data/github-client.js";
 import { LinguistClassifier } from "../data/linguist.js";
 import { loadState } from "../data/state.js";
-import { renderLanguagesCard, renderPreviewHtml, renderStatsCard } from "../render/index.js";
+import {
+  DEFAULT_MASCOT_ID,
+  getMascotRenderer,
+  renderLanguagesCard,
+  renderPreviewHtml,
+  renderStatsCard,
+} from "../render/index.js";
 import { parseFileOptions } from "./options.js";
 
 async function main(): Promise<void> {
@@ -19,7 +25,7 @@ async function main(): Promise<void> {
     loadClassifier: () => LinguistClassifier.loadDefault(),
     now: () => new Date(),
   });
-  const statsSvg = renderStatsCard(result.snapshot);
+  const statsSvg = renderStatsCard(result.snapshot, getMascotRenderer(DEFAULT_MASCOT_ID));
   const languagesSvg = renderLanguagesCard(result.snapshot);
   const preview = renderPreviewHtml(statsSvg, languagesSvg);
 
