@@ -6,7 +6,7 @@
 
 - `npm run build`: Secret 없이 타입 검사와 fixture 출력 검증을 실행합니다.
 - `npm run build:cards`: 기존 개인용 카드 수집·검증 명령이며 `GH_STATS_TOKEN`과 사용자명이 필요합니다.
-- `vercel build`: 연결된 Vercel 프로젝트의 Preview 설정으로 Function bundle을 로컬 생성합니다. `.vercel/output/functions/`의 카드 Function에 `assets/fonts/NeoDunggeunmoPro.woff2`, Cron Function에 `data/languages.yml`이 포함됐는지 확인합니다.
+- `vercel build`: 연결된 Vercel 프로젝트의 Preview 설정으로 Function 산출물을 로컬 생성합니다. 각 `.func/.vc-config.json`의 `filePathMap`에서 카드의 `assets/fonts/NeoDunggeunmoPro.woff2`, Cron의 `data/languages.yml` 연결과 원본 파일 존재 여부를 확인합니다.
 - Vercel의 정적 출력은 `public/`만 사용합니다. `.vercel/output/static/`에 소스, fixture, `data/languages.yml`이 없는지도 확인합니다.
 
 ## 환경
