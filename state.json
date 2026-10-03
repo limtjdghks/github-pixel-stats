@@ -5,20 +5,8 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-09-30T22:20:48.000Z",
+  "updatedAt": "2026-10-03T21:22:34.000Z",
   "commits": {
-    "1054572471:07f80cd3177bf1b5169b434366b4b0e83ca97566": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "07f80cd3177bf1b5169b434366b4b0e83ca97566",
-      "authoredAt": "2025-10-03T16:03:26.000+09:00",
-      "languages": [
-        "CSS",
-        "HTML",
-        "JavaScript",
-        "TypeScript"
-      ]
-    },
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
       "repository": "DMUMC/9th-web-study",
@@ -48,18 +36,6 @@
       "repository": "DMUMC/9th-web-study",
       "sha": "3ac663a42da43095f1a25d316edc608c68d69e28",
       "authoredAt": "2025-12-21T04:33:34.000+09:00",
-      "languages": [
-        "CSS",
-        "HTML",
-        "JavaScript",
-        "TypeScript"
-      ]
-    },
-    "1054572471:56e58a2da5e334514ec7dcc7ddcb1fea16e3a05b": {
-      "repositoryId": 1054572471,
-      "repository": "DMUMC/9th-web-study",
-      "sha": "56e58a2da5e334514ec7dcc7ddcb1fea16e3a05b",
-      "authoredAt": "2025-10-03T16:03:39.000+09:00",
       "languages": [
         "CSS",
         "HTML",
