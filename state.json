@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-10-13T22:50:48.000Z",
+  "updatedAt": "2026-10-14T21:45:31.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -5927,15 +5927,6 @@
       "authoredAt": "2025-11-12T04:49:27.000+09:00",
       "languages": []
     },
-    "947120414:03e94ff0f11021630a5190061ec91795c1009160": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "03e94ff0f11021630a5190061ec91795c1009160",
-      "authoredAt": "2025-10-15T00:27:05.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
     "947120414:04d4afca85343809a8e80f0beafc28e114c40a82": {
       "repositoryId": 947120414,
       "repository": "DMU-NextLevel/front",
@@ -5943,52 +5934,6 @@
       "authoredAt": "2025-10-24T13:47:05.000+09:00",
       "languages": [
         "JavaScript",
-        "TypeScript"
-      ]
-    },
-    "947120414:0c033a18669281819bdf33caa79ae0a03966ff02": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "0c033a18669281819bdf33caa79ae0a03966ff02",
-      "authoredAt": "2025-10-14T22:04:07.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:0ebb98cfb82b9e8f870b7b5e1d3a6ca0d29e035a": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "0ebb98cfb82b9e8f870b7b5e1d3a6ca0d29e035a",
-      "authoredAt": "2025-10-14T22:09:53.000+09:00",
-      "languages": [
-        "JavaScript",
-        "TypeScript"
-      ]
-    },
-    "947120414:109e8a3c8a7d73a1b81897387ba38b0857bacf98": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "109e8a3c8a7d73a1b81897387ba38b0857bacf98",
-      "authoredAt": "2025-10-14T17:00:38.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:17c579db15b5bfd8ea867a6f49fc45b0b751099e": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "17c579db15b5bfd8ea867a6f49fc45b0b751099e",
-      "authoredAt": "2025-10-15T00:21:13.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:1e6329754082d952a48432e98d04475bb9ee1de3": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "1e6329754082d952a48432e98d04475bb9ee1de3",
-      "authoredAt": "2025-10-14T12:36:50.000+09:00",
-      "languages": [
         "TypeScript"
       ]
     },
@@ -6011,42 +5956,6 @@
         "TypeScript"
       ]
     },
-    "947120414:4d01f958ef933460d77cf772d8adbc669fc0334e": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "4d01f958ef933460d77cf772d8adbc669fc0334e",
-      "authoredAt": "2025-10-15T04:46:42.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:534cb721206af9a5baa3613a27596fb6dfa97812": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "534cb721206af9a5baa3613a27596fb6dfa97812",
-      "authoredAt": "2025-10-15T00:16:38.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:54555f7af220e868a692add1aa80671dcdd159b2": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "54555f7af220e868a692add1aa80671dcdd159b2",
-      "authoredAt": "2025-10-14T21:59:42.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:5dd87f93a7448de9bc0f6ddb50fabddb7c36d4f1": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "5dd87f93a7448de9bc0f6ddb50fabddb7c36d4f1",
-      "authoredAt": "2025-10-15T00:30:49.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
     "947120414:62402ea1f7e262ffe5f8442c90b4967d7dbb67c8": {
       "repositoryId": 947120414,
       "repository": "DMU-NextLevel/front",
@@ -6065,56 +5974,11 @@
         "TypeScript"
       ]
     },
-    "947120414:6ee0c40bcb64db15bd6d3a2b2192cfbf4b09f28c": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "6ee0c40bcb64db15bd6d3a2b2192cfbf4b09f28c",
-      "authoredAt": "2025-10-15T00:50:21.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:6f1cd4ebebd130c0721ac7aaf075be3db3fc3583": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "6f1cd4ebebd130c0721ac7aaf075be3db3fc3583",
-      "authoredAt": "2025-10-14T22:45:43.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
     "947120414:7a0529f216ffd2bcdcbeb3ad233195ca9843a170": {
       "repositoryId": 947120414,
       "repository": "DMU-NextLevel/front",
       "sha": "7a0529f216ffd2bcdcbeb3ad233195ca9843a170",
       "authoredAt": "2025-11-10T09:04:34.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:80eba295e040afa4cda73be1a3354ad7f0f73cd9": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "80eba295e040afa4cda73be1a3354ad7f0f73cd9",
-      "authoredAt": "2025-10-15T04:24:47.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:8500c89cecb9c25c93214a67d3234d74632bd233": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "8500c89cecb9c25c93214a67d3234d74632bd233",
-      "authoredAt": "2025-10-14T16:39:20.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:87b2138d878631e73e8e90a85d00df6ed7f74dac": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "87b2138d878631e73e8e90a85d00df6ed7f74dac",
-      "authoredAt": "2025-10-14T22:16:32.000+09:00",
       "languages": [
         "TypeScript"
       ]
@@ -6128,75 +5992,11 @@
         "TypeScript"
       ]
     },
-    "947120414:9771275330c50211de274a723dddb783d277fd56": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "9771275330c50211de274a723dddb783d277fd56",
-      "authoredAt": "2025-10-14T16:39:20.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
     "947120414:98dcd10c06c3510f5c8efaf8bc87afedf5d3ce01": {
       "repositoryId": 947120414,
       "repository": "DMU-NextLevel/front",
       "sha": "98dcd10c06c3510f5c8efaf8bc87afedf5d3ce01",
       "authoredAt": "2025-11-10T09:45:02.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:9c8f59090f83815ea5e4ae1b948fb081c295293d": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "9c8f59090f83815ea5e4ae1b948fb081c295293d",
-      "authoredAt": "2025-10-15T03:55:19.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:9e3e81ee9ec0d920682ec9f9d80f9d0aede17786": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "9e3e81ee9ec0d920682ec9f9d80f9d0aede17786",
-      "authoredAt": "2025-10-15T00:00:24.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:a60ac676d1f25c831899c49d8015b5bb265f48fd": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "a60ac676d1f25c831899c49d8015b5bb265f48fd",
-      "authoredAt": "2025-10-14T17:09:17.000+09:00",
-      "languages": [
-        "JavaScript",
-        "TypeScript"
-      ]
-    },
-    "947120414:aa2b86d61288a48662dd8294b0a8830e5c0cb8fd": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "aa2b86d61288a48662dd8294b0a8830e5c0cb8fd",
-      "authoredAt": "2025-10-15T00:08:01.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:c00c524c5992a21f2a234f515dbb1467ff266d51": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "c00c524c5992a21f2a234f515dbb1467ff266d51",
-      "authoredAt": "2025-10-15T03:38:59.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:c100fe27fc8326d002880893181d5efae1761e23": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "c100fe27fc8326d002880893181d5efae1761e23",
-      "authoredAt": "2025-10-14T22:07:37.000+09:00",
       "languages": [
         "TypeScript"
       ]
@@ -6208,24 +6008,6 @@
       "authoredAt": "2025-10-22T00:39:35.000+09:00",
       "languages": [
         "TypeScript"
-      ]
-    },
-    "947120414:d7eafc48657fa775f5f9e3337f549573ec7a06bb": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "d7eafc48657fa775f5f9e3337f549573ec7a06bb",
-      "authoredAt": "2025-10-14T23:14:18.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:e0cbfe964178f7cc117cfd5da1382f732403f13c": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "e0cbfe964178f7cc117cfd5da1382f732403f13c",
-      "authoredAt": "2025-10-14T22:19:01.000+09:00",
-      "languages": [
-        "JavaScript"
       ]
     },
     "947120414:ef8952cc7bef7a27e54f13572a3d4aafb5a1c4a8": {
@@ -6242,15 +6024,6 @@
       "repository": "DMU-NextLevel/front",
       "sha": "f19bc5034d5f06664438409189e77a86ab216773",
       "authoredAt": "2025-11-10T09:32:20.000+09:00",
-      "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:f9a0ae7dca475ced9fb2fda3536aa3f9f2f545aa": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "f9a0ae7dca475ced9fb2fda3536aa3f9f2f545aa",
-      "authoredAt": "2025-10-15T00:01:16.000+09:00",
       "languages": [
         "TypeScript"
       ]
