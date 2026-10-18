@@ -17,4 +17,8 @@
 | Preview | `preview` | 없음 |
 | Development | `development` 또는 로컬 실행 시 미설정 | 없음 |
 
-Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`의 빈 값 여부를 검증합니다. 현재 Function은 이 Secret을 사용하지 않습니다. 운영 GitHub token과 Blob 쓰기 권한을 Preview에 등록하지 마세요. 프로젝트의 환경별 Secret 설정과 실제 수집 연결은 후속 작업에서 진행합니다.
+Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `CRON_SECRET`, `BLOB_PRIVATE_STORE_ID`, `BLOB_PUBLIC_STORE_ID`의 빈 값 여부를 검증합니다. 현재 Function은 이 값을 사용하지 않습니다. 운영 GitHub token과 운영 Blob store ID를 Preview에 등록하지 마세요. 프로젝트의 환경별 Secret 설정과 실제 수집 연결은 후속 작업에서 진행합니다.
+
+## Blob 저장소
+
+GPS-HOST-06의 저장 계약은 [`blob-storage.md`](./blob-storage.md)에 정리합니다. Blob 인증은 장기 `BLOB_READ_WRITE_TOKEN` 대신 Vercel OIDC token과 store ID를 사용합니다. 두 store ID는 함께 설정해야 하며 같은 값이면 시작 시 오류로 처리합니다.

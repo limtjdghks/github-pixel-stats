@@ -6,12 +6,13 @@
 
 ## SDK 상태
 
-현재 `@vercel/functions`와 `@vercel/blob`은 `package.json`과 `package-lock.json`에 설치되어 있지 않습니다. 2026-09-12 npm registry 조회 결과인 아래 버전은 후속 구현을 위한 참고 기준이며, 이번 작업에서 의존성으로 추가하지 않습니다.
+`@vercel/blob`은 GPS-HOST-06에서 `2.8.2`로, OIDC token 조회용 `@vercel/oidc`는 `3.8.10`으로 고정 설치했습니다. `@vercel/functions`는 아직 설치하지 않았습니다.
 
-| 패키지 | 참고 버전 | 실제 설치·타입 재확인 시점 |
+| 패키지 | 버전 | 상태 |
 | --- | ---: | --- |
-| `@vercel/functions` | `3.9.7` | GPS-HOST-05 |
-| `@vercel/blob` | `2.8.0` | GPS-HOST-06 |
+| `@vercel/functions` | `3.9.7` (2026-09-12 참고) | 미설치, GPS-HOST-08에서 재확인 |
+| `@vercel/blob` | `2.8.2` | 설치, GPS-HOST-06 |
+| `@vercel/oidc` | `3.8.10` | 설치, GPS-HOST-06 |
 
 후속 Issue를 시작할 때 공식 문서와 실제 설치 버전의 TypeScript 선언을 다시 확인합니다. 이 문서의 참고 버전만 보고 존재하지 않는 API나 옵션을 추정하지 않습니다.
 
