@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import card from "../api/card.js";
 import cron from "../api/cron.js";
 import health from "../api/health.js";
 import { readHostingConfig } from "../src/hosting/environment.js";
@@ -45,7 +44,7 @@ test("hosting config rejects invalid values without echoing secrets", () => {
   assert.equal(JSON.stringify({ status: "ok" }).includes(secret), false);
 });
 
-test("health and unfinished endpoints return explicit states without external requests or secrets", async () => {
+test("health and unfinished cron endpoints return explicit states without external requests or secrets", async () => {
   const originalFetch = globalThis.fetch;
   let fetchCount = 0;
   globalThis.fetch = async () => {
@@ -55,8 +54,6 @@ test("health and unfinished endpoints return explicit states without external re
   try {
     const cases = [
       [health, "/healthz", 200, { status: "ok" }],
-      [card, "/example/stats.svg", 501, { status: "not_implemented", endpoint: "card" }],
-      [card, "/example/languages.svg", 501, { status: "not_implemented", endpoint: "card" }],
       [cron, "/api/cron", 501, { status: "not_implemented", endpoint: "cron" }],
     ] as const;
     for (const [handler, path, status, body] of cases) {
@@ -78,6 +75,7 @@ test("HEAD omits response bodies and unsupported methods return 405", async () =
   assert.equal(await head.text(), "");
   const post = cron.fetch(new Request("https://example.test/api/cron", { method: "POST" }));
   assert.equal(post.status, 405);
+  assert.equal(post.headers.get("Allow"), "GET, HEAD");
 });
 
 test("Vercel routes and function resource declarations match the public contract", async () => {
@@ -91,8 +89,8 @@ test("Vercel routes and function resource declarations match the public contract
   assert.equal(config.outputDirectory, "public");
   assert.deepEqual(config.rewrites, [
     { source: "/healthz", destination: "/api/health" },
-    { source: "/:username/stats.svg", destination: "/api/card?card=stats" },
-    { source: "/:username/languages.svg", destination: "/api/card?card=languages" },
+    { source: "/:username/stats.svg", destination: "/api/card?card=stats&username=:username" },
+    { source: "/:username/languages.svg", destination: "/api/card?card=languages&username=:username" },
   ]);
   assert.equal(config.functions["api/card.ts"]?.includeFiles, "assets/fonts/**/*.woff2");
   assert.equal(config.functions["api/cron.ts"]?.includeFiles, "data/languages.yml");
