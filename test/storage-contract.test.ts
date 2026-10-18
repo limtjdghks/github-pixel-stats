@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -127,3 +127,17 @@ for (const adapter of adapters) {
     }
   });
 }
+
+test("filesystem store skips entries removed between readdir and stat", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gps-store-"));
+  try {
+    const store = new FilesystemObjectStore(root, "public");
+    await store.write("cards/alpha/1/a.svg", "<svg/>", options({ kind: "content-addressed" }));
+    // 끊어진 symlink는 readdir에는 보이지만 stat에서 ENOENT가 나므로 동시 삭제와 같은 경로를 탑니다.
+    await mkdir(join(root, "cards", "alpha", "2"), { recursive: true });
+    await symlink(join(root, "missing.svg"), join(root, "cards", "alpha", "2", "gone.svg"));
+    assert.deepEqual((await store.list("cards/alpha/")).map((entry) => entry.pathname), ["cards/alpha/1/a.svg"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
