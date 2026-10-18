@@ -27,6 +27,7 @@ test("hosting config requires two distinct Blob store IDs instead of a read-writ
     { BLOB_PRIVATE_STORE_ID: "store_private" },
     { BLOB_PUBLIC_STORE_ID: "store_public" },
     { BLOB_PRIVATE_STORE_ID: "store_same", BLOB_PUBLIC_STORE_ID: " store_same" },
+    { BLOB_PRIVATE_STORE_ID: "store_same", BLOB_PUBLIC_STORE_ID: "same" },
   ]) {
     assert.throws(() => readHostingConfig(source), /Invalid Blob store configuration/);
   }

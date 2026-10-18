@@ -24,6 +24,7 @@ import {
   type StoredObject,
   type WriteOptions,
 } from "./object-store.js";
+import type { BlobStoreIds } from "./blob-store-ids.js";
 
 interface BlobCredentials {
   oidcToken: string;
@@ -148,11 +149,6 @@ export class VercelBlobObjectStore implements ObjectStore {
       await this.sdk.del(pathnames.slice(index, index + DELETE_BATCH_SIZE), credentials);
     }
   }
-}
-
-export interface BlobStoreIds {
-  privateStoreId: string;
-  publicStoreId: string;
 }
 
 /** 상태용 private store와 카드용 public store adapter를 함께 만듭니다. */

@@ -4,7 +4,10 @@ import { isReleaseVersion, releasePathnames } from "./pathnames.js";
 
 export const MANIFEST_SCHEMA_VERSION = 1 as const;
 
-/** 발행된 카드 묶음입니다. pathname은 저장하지 않고 `releasePathnames()`로 다시 만듭니다. */
+/**
+ * 발행된 카드 묶음입니다. pathname은 저장하지 않고 `releasePathnames()`로 다시 만듭니다.
+ * `mascots`는 현재 registry에 있는 ID만 담으며, 모두 제거된 오래된 release에서는 비어 있을 수 있습니다.
+ */
 export interface CardRelease {
   version: string;
   generatedAt: string;
@@ -28,6 +31,11 @@ function isTimestamp(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
+/**
+ * 저장된 release를 검증합니다.
+ * 이후 배포에서 registry에서 빠진 마스코트는 오류 대신 목록에서 제외해 기존 manifest를 계속 읽을 수 있게 합니다.
+ * 제외된 variant 카드는 참조에서 빠지므로 다음 정리 단계에서 삭제됩니다.
+ */
 function parseRelease(value: unknown): CardRelease {
   if (
     !isRecord(value) ||
@@ -35,12 +43,12 @@ function parseRelease(value: unknown): CardRelease {
     !isTimestamp(value.generatedAt) ||
     !Array.isArray(value.mascots) ||
     value.mascots.length === 0 ||
-    !value.mascots.every(isMascotId) ||
+    !value.mascots.every((id) => typeof id === "string" && id.length > 0) ||
     new Set(value.mascots).size !== value.mascots.length
   ) {
     throw new Error("Manifest has an invalid release.");
   }
-  return { version: value.version, generatedAt: value.generatedAt, mascots: [...value.mascots] };
+  return { version: value.version, generatedAt: value.generatedAt, mascots: value.mascots.filter(isMascotId) };
 }
 
 /** 저장소에서 읽은 manifest를 검증합니다. 다른 사용자나 손상된 구조는 오류로 처리합니다. */

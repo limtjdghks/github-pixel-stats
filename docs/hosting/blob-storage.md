@@ -25,7 +25,7 @@
 | private | `releases/{user}/{version}/snapshot.json`, `state.json` | 내용 주소, 불변 |
 | public | `cards/{user}/{version}/languages.svg`, `stats-{mascot}.svg` | 내용 주소, 불변 |
 
-`{user}`는 검증한 GitHub 사용자명의 소문자입니다. `{version}`은 `YYYYMMDD-HHMMSS-{hash16}` 형식이며 snapshot 생성 시각과 snapshot·state 내용 hash로 만듭니다. 같은 수집 결과는 같은 버전이 되므로 재시도한 발행은 같은 pathname에 같은 내용을 씁니다.
+`{user}`는 검증한 GitHub 사용자명의 소문자입니다. `{version}`은 `YYYYMMDD-HHMMSS-{hash16}` 형식이며 snapshot 생성 시각과 snapshot·state·렌더링된 카드 내용 hash로 만듭니다. 같은 수집 결과와 같은 renderer는 같은 버전이 되므로 재시도한 발행은 같은 pathname에 같은 내용을 씁니다. renderer가 바뀌면 버전도 바뀌어 이미 cache된 카드 pathname을 덮지 않습니다. 이때 같은 snapshot의 재발행은 생성 시각이 같아 `stale`이 되므로 새 renderer 결과는 다음 수집부터 반영됩니다.
 
 ## 발행 순서
 
@@ -42,7 +42,13 @@
 - Vercel adapter는 모든 요청에 `@vercel/oidc`에서 얻은 OIDC token과 store ID를 명시합니다. token이 없으면 요청 전에 실패하며, 환경 변수의 `BLOB_READ_WRITE_TOKEN`으로 넘어가지 않습니다.
 - `BLOB_PRIVATE_STORE_ID`와 `BLOB_PUBLIC_STORE_ID`는 함께 설정해야 하며 같은 값을 허용하지 않습니다.
 - manifest와 checkpoint 조회는 `useCache: false`로 origin을 읽습니다.
+- checkpoint lease guard는 ETag를 문자열로 비교하지 않고 lease 소유권만 확인합니다. Blob은 `get()` 응답 헤더와 `put()` 응답에서 ETag를 따로 받으므로 revision 일치는 조건부 쓰기에 맡깁니다.
+- 같은 store 금지 검사는 SDK와 같이 `store_` 접두사를 제거한 뒤 비교합니다.
 - 생성이 조건인 쓰기(`absent`)는 SDK가 기존 객체 충돌을 별도 오류로 구분하지 않으므로, 실패 후 `head()`로 객체가 있는지 확인해 충돌로 판정합니다.
+
+## 마스코트 registry 변경
+
+manifest를 읽을 때 registry에 없는 마스코트 ID는 오류 대신 목록에서 제외합니다. 제외된 variant 카드는 참조에서 빠지므로 정리 단계에서 삭제됩니다.
 
 ## 범위 밖
 

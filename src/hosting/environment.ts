@@ -1,4 +1,4 @@
-import type { BlobStoreIds } from "../storage/vercel-blob-store.js";
+import { isSameBlobStore, type BlobStoreIds } from "../storage/blob-store-ids.js";
 
 export type HostingEnvironment = "production" | "preview" | "development";
 
@@ -30,7 +30,7 @@ function readBlobStores(source: NodeJS.ProcessEnv): BlobStoreIds | undefined {
     return undefined;
   }
   // 한쪽만 있거나 같은 store를 가리키면 private 상태가 public store에 쓰일 수 있습니다.
-  if (privateStoreId === undefined || publicStoreId === undefined || privateStoreId === publicStoreId) {
+  if (privateStoreId === undefined || publicStoreId === undefined || isSameBlobStore(privateStoreId, publicStoreId)) {
     throw new Error("Invalid Blob store configuration.");
   }
   return { privateStoreId, publicStoreId };
