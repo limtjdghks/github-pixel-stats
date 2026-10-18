@@ -10,7 +10,7 @@ import {
 } from "../render/index.js";
 import { validateGeneratedOutput } from "../validation/output.js";
 import { removeUnreferencedReleases, type CleanupReport } from "./cleanup.js";
-import { MANIFEST_SCHEMA_VERSION, type CardManifest, type CardRelease } from "./manifest.js";
+import { nextManifest, type CardManifest, type CardRelease } from "./manifest.js";
 import type { ObjectStore } from "./object-store.js";
 import { createReleaseVersion, releasePathnames } from "./pathnames.js";
 import { readManifest, replaceManifest, writeReleaseState } from "./private-repository.js";
@@ -89,7 +89,7 @@ async function writeCards(store: ObjectStore, username: string, rendered: Render
 
 /**
  * 수집 결과를 검증된 카드로 발행합니다.
- * 순서: SVG 생성·검증 → private snapshot·state 저장 → public 카드 저장 → manifest 조건부 교체 → 오래된 release 정리.
+ * 순서: SVG 생성·검증 → private snapshot·state 저장 → public 카드 저장 → manifest 조건부 교체 → 유예가 끝난 release 정리.
  * manifest 교체 전에 실패하면 예외를 던지며, 마지막 성공 manifest와 카드는 바뀌지 않습니다.
  */
 export async function publishRelease(result: CollectionResult, dependencies: PublishDependencies): Promise<PublishOutcome> {
@@ -114,13 +114,7 @@ export async function publishRelease(result: CollectionResult, dependencies: Pub
         return { status: "stale", manifest: stored.manifest };
       }
     }
-    const manifest: CardManifest = {
-      schemaVersion: MANIFEST_SCHEMA_VERSION,
-      username: snapshot.username,
-      publishedAt: dependencies.now().toISOString(),
-      current: rendered.release,
-      previous: stored?.manifest.current ?? null,
-    };
+    const manifest = nextManifest(stored?.manifest ?? null, snapshot.username, rendered.release, dependencies.now());
     if (await replaceManifest(privateStore, manifest, stored)) {
       let cleanup: CleanupReport | { error: string };
       try {

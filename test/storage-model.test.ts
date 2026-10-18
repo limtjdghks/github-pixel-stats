@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { CollectionCheckpoint } from "../src/data/checkpoint-model.js";
 import { ObjectCheckpointStore } from "../src/storage/checkpoint-object-store.js";
-import { parseManifest, referencedPathnames, type CardManifest } from "../src/storage/manifest.js";
+import { nextManifest, parseManifest, referencedPathnames, type CardManifest } from "../src/storage/manifest.js";
 import {
   cardPrefix,
   checkpointPathname,
@@ -57,6 +57,7 @@ test("manifests are validated and expose only current and previous release pathn
     publishedAt: "2026-10-01T00:00:00.000Z",
     current: { version: VERSION, generatedAt: "2026-09-12T23:59:59.000Z", mascots: ["cat"] },
     previous: null,
+    retired: [],
   };
   assert.deepEqual(parseManifest(JSON.parse(JSON.stringify(manifest)), "fixture-alpha"), manifest);
   const references = referencedPathnames(manifest);
@@ -74,11 +75,35 @@ test("manifests are validated and expose only current and previous release pathn
     [{ ...manifest, current: { ...manifest.current, version: "../../x" } }, "fixture-alpha", /invalid release/],
     [{ ...manifest, current: { ...manifest.current, mascots: ["cat", "cat"] } }, "fixture-alpha", /invalid release/],
     [{ ...manifest, current: { ...manifest.current, mascots: [1] } }, "fixture-alpha", /invalid release/],
+    [{ ...manifest, retired: undefined }, "fixture-alpha", /invalid retired list/],
+    [{ ...manifest, retired: [{ ...manifest.current }] }, "fixture-alpha", /invalid retired release/],
     [{ ...manifest, current: { ...manifest.current, mascots: [] } }, "fixture-alpha", /invalid release/],
   ];
   for (const [value, username, error] of invalid) {
     assert.throws(() => parseManifest(value, username), error);
   }
+});
+
+test("next manifests retire the previous release and keep it only during the grace period", () => {
+  const release = (minute: number) => ({
+    version: `20260912-23${String(minute).padStart(2, "0")}00-0123456789abcdef`,
+    generatedAt: `2026-09-12T23:${String(minute).padStart(2, "0")}:00.000Z`,
+    mascots: ["cat" as const],
+  });
+  const at = (minutes: number) => new Date(Date.parse("2026-10-01T00:00:00.000Z") + minutes * 60_000);
+  const first = nextManifest(null, "fixture-alpha", release(1), at(0));
+  assert.deepEqual([first.previous, first.retired], [null, []]);
+  const second = nextManifest(first, "fixture-alpha", release(2), at(120));
+  assert.deepEqual([second.previous, second.retired], [release(1), []]);
+  const third = nextManifest(second, "fixture-alpha", release(3), at(121));
+  assert.deepEqual(third.retired, [{ ...release(1), retiredAt: at(121).toISOString() }],
+    "a release uploaded long ago is kept from the moment it stops being previous");
+  const fourth = nextManifest(third, "fixture-alpha", release(4), at(180));
+  assert.deepEqual(fourth.retired.map((entry) => entry.version), [release(1).version, release(2).version]);
+  const fifth = nextManifest(fourth, "fixture-alpha", release(5), at(182));
+  assert.deepEqual(fifth.retired.map((entry) => entry.version), [release(2).version, release(3).version]);
+  assert.equal(nextManifest(fifth, "fixture-alpha", release(2), at(183)).retired.some((entry) => entry.version === release(2).version), false,
+    "a retired version that becomes current again is not also listed as retired");
 });
 
 test("manifests stay readable after a mascot is removed from the registry", () => {
@@ -89,6 +114,7 @@ test("manifests stay readable after a mascot is removed from the registry", () =
     publishedAt: "2026-10-01T00:00:00.000Z",
     current: { ...release, mascots: ["retired", "cat"] },
     previous: { ...release, mascots: ["retired"] },
+    retired: [],
   }, "fixture-alpha");
   assert.deepEqual(manifest.current.mascots, ["cat"]);
   assert.deepEqual(manifest.previous?.mascots, []);

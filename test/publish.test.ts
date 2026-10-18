@@ -6,6 +6,7 @@ import { MASCOT_IDS } from "../src/render/index.js";
 import type { ObjectStore } from "../src/storage/object-store.js";
 import { manifestPathname, releasePathnames } from "../src/storage/pathnames.js";
 import { loadPublishedState, readManifest } from "../src/storage/private-repository.js";
+import { removeUnreferencedReleases } from "../src/storage/cleanup.js";
 import { publishRelease, type PublishDependencies } from "../src/storage/publish.js";
 import { loadUserFixture } from "./helpers/load-user-fixture.js";
 import { MemoryObjectStore } from "./helpers/memory-object-store.js";
@@ -139,27 +140,44 @@ test("persistent manifest conflicts give up without replacing the last successfu
   assert.deepEqual((await readManifest(privateStore, "fixture-alpha"))?.manifest, first.manifest);
 });
 
-test("cleanup keeps current and previous releases and recent uploads, then removes expired ones", async () => {
+test("cleanup keeps releases until their retirement grace ends, even when they were uploaded long ago", async () => {
+  const { clock, privateStore, publicStore, dependencies } = await setup();
+  const paths = (outcome: Awaited<ReturnType<typeof publishRelease>>) => {
+    assert.ok(outcome.status === "published");
+    return releasePathnames("fixture-alpha", outcome.manifest.current.version, MASCOT_IDS);
+  };
+  const exists = (release: ReturnType<typeof paths>) =>
+    publicStore.objects.has(release.public.languages) && privateStore.objects.has(release.private.state);
+  const v1 = paths(await publishRelease(await result(), dependencies));
+  clock.now += 2 * HOUR;
+  const v2 = paths(await publishRelease(await result(10), dependencies));
+  clock.now += 60_000;
+  const third = await publishRelease(await result(20), dependencies);
+  paths(third);
+  assert.deepEqual(third.status === "published" && third.cleanup, { deleted: 0 },
+    "v1 was uploaded two hours ago but stopped being previous only now");
+  assert.ok(exists(v1));
+
+  clock.now += HOUR + 60_000;
+  const fourth = await publishRelease(await result(30), dependencies);
+  paths(fourth);
+  assert.deepEqual(fourth.status === "published" && fourth.cleanup, { deleted: 2 + 1 + MASCOT_IDS.length });
+  assert.equal(exists(v1), false);
+  assert.ok(exists(v2), "v2 was retired just now and stays during its grace period");
+});
+
+test("cleanup also keeps what the latest stored manifest references", async () => {
   const { clock, privateStore, publicStore, dependencies } = await setup();
   const first = await publishRelease(await result(), dependencies);
-  clock.now += 10 * 60_000;
-  await publishRelease(await result(10), dependencies);
-  clock.now += 10 * 60_000;
-  const third = await publishRelease(await result(20), dependencies);
-  assert.ok(first.status === "published" && third.status === "published");
-  assert.deepEqual(third.cleanup, { deleted: 0 }, "the unreferenced first release is still inside the grace period");
-  const firstPaths = releasePathnames("fixture-alpha", first.manifest.current.version, MASCOT_IDS);
-  assert.ok(publicStore.objects.has(firstPaths.public.languages));
-
   clock.now += 2 * HOUR;
-  const fourth = await publishRelease(await result(30), dependencies);
-  assert.ok(fourth.status === "published");
-  assert.deepEqual(fourth.cleanup, { deleted: 2 * (2 + 1 + MASCOT_IDS.length) }, "the first and second releases expire");
-  assert.equal(publicStore.objects.has(firstPaths.public.languages), false);
-  assert.equal(privateStore.objects.has(firstPaths.private.state), false);
-  const kept = releasePathnames("fixture-alpha", fourth.manifest.previous!.version, MASCOT_IDS);
-  assert.ok(publicStore.objects.has(kept.public.languages));
-  assert.ok(privateStore.objects.has(kept.private.state));
+  const second = await publishRelease(await result(10), dependencies);
+  assert.ok(first.status === "published" && second.status === "published");
+  clock.now += 2 * HOUR;
+  // 오래된 manifest로 정리를 실행해도, 저장된 최신 manifest가 가리키는 release는 지우지 않습니다.
+  const report = await removeUnreferencedReleases({ private: privateStore, public: publicStore }, first.manifest, new Date(clock.now));
+  assert.deepEqual(report, { deleted: 0 });
+  const latest = releasePathnames("fixture-alpha", second.manifest.current.version, MASCOT_IDS);
+  assert.ok(publicStore.objects.has(latest.public.languages));
 });
 
 test("a cleanup failure is reported without undoing the published manifest", async () => {
