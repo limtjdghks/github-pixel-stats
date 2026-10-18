@@ -13,14 +13,29 @@ test("hosting config accepts the three Vercel environments without requiring sec
   }
   assert.deepEqual(readHostingConfig({ VERCEL_ENV: "preview" }).credentials, {
     githubToken: undefined,
-    blobToken: undefined,
     cronSecret: undefined,
   });
+  assert.equal(readHostingConfig({ VERCEL_ENV: "preview" }).blobStores, undefined);
+});
+
+test("hosting config requires two distinct Blob store IDs instead of a read-write token", () => {
+  assert.deepEqual(
+    readHostingConfig({ BLOB_PRIVATE_STORE_ID: " store_private ", BLOB_PUBLIC_STORE_ID: "store_public" }).blobStores,
+    { privateStoreId: "store_private", publicStoreId: "store_public" },
+  );
+  for (const source of [
+    { BLOB_PRIVATE_STORE_ID: "store_private" },
+    { BLOB_PUBLIC_STORE_ID: "store_public" },
+    { BLOB_PRIVATE_STORE_ID: "store_same", BLOB_PUBLIC_STORE_ID: " store_same" },
+  ]) {
+    assert.throws(() => readHostingConfig(source), /Invalid Blob store configuration/);
+  }
+  assert.equal("blobToken" in readHostingConfig({ BLOB_READ_WRITE_TOKEN: "unused" }).credentials, false);
 });
 
 test("hosting config rejects invalid values without echoing secrets", () => {
   assert.throws(() => readHostingConfig({ VERCEL_ENV: "other" }), /Invalid VERCEL_ENV configuration/);
-  for (const key of ["GH_STATS_TOKEN", "BLOB_READ_WRITE_TOKEN", "CRON_SECRET"]) {
+  for (const key of ["GH_STATS_TOKEN", "CRON_SECRET", "BLOB_PRIVATE_STORE_ID", "BLOB_PUBLIC_STORE_ID"]) {
     assert.throws(() => readHostingConfig({ [key]: "  " }), new RegExp(`Invalid ${key} configuration`));
   }
   const secret = "private-test-secret";
