@@ -8,11 +8,11 @@
 | --- | --- |
 | `src/storage/object-store.ts` | 저장소 공통 계약과 pathname 형식 검사 |
 | `src/storage/pathnames.ts` | 사용자·release 버전·마스코트별 pathname SSOT |
-| `src/storage/manifest.ts` | manifest 구조, 검증, 보존 대상 계산 |
+| `src/storage/manifest.ts` | manifest 구조, 검증, 다음 manifest·퇴역 release 계산, 보존 대상 계산 |
 | `src/storage/private-repository.ts` | manifest 조건부 교체, release state 저장, 발행된 state 조회 |
 | `src/storage/checkpoint-object-store.ts` | HOST-03 checkpoint 계약의 ETag 기반 구현 |
 | `src/storage/publish.ts` | 렌더링·검증부터 manifest 교체까지의 발행 흐름 |
-| `src/storage/cleanup.ts` | 현재·직전 release 외 객체 정리 |
+| `src/storage/cleanup.ts` | manifest가 참조하지 않는 객체 정리 |
 | `src/storage/filesystem-store.ts` | CLI·로컬 검증용 adapter |
 | `src/storage/vercel-blob-store.ts` | `@vercel/blob` adapter |
 
@@ -33,7 +33,14 @@
 2. private store에 release의 snapshot과 state를 저장합니다.
 3. public store에 카드를 저장합니다.
 4. manifest를 읽고 ETag 조건부 쓰기로 교체합니다. 같은 버전이 이미 현재 버전이면 `unchanged`, 같거나 더 새로운 snapshot이 발행되어 있으면 `stale`로 끝냅니다. 조건부 쓰기가 충돌하면 manifest를 다시 읽고 최대 3회 시도한 뒤 `conflict`를 반환합니다.
-5. 새 manifest 발행 뒤 현재·직전 release가 참조하지 않는 객체를 삭제합니다. 진행 중인 다른 발행의 객체를 지우지 않도록 업로드 후 1시간이 지난 객체만 삭제합니다. 정리 실패는 발행 결과에 기록하고 발행 자체는 성공으로 처리합니다.
+5. 새 manifest 발행 뒤 manifest가 참조하지 않는 객체를 삭제합니다. 정리 실패는 발행 결과에 기록하고 발행 자체는 성공으로 처리합니다.
+
+## 보존과 정리
+
+- manifest는 current, previous와 함께 `retired` 목록을 가집니다. 새 발행 때 기존 previous는 그 시각(`retiredAt`)에 퇴역 목록으로 옮겨지고, 퇴역 후 1시간(`RELEASE_GRACE_MS`)이 지난 항목은 다음 발행에서 목록에서 빠집니다.
+- 유예는 업로드 시각이 아니라 참조가 끊긴 시각부터 계산합니다. 오래전에 올라간 release도 previous에서 밀려난 직후에는 지워지지 않으므로, 버전 경로를 cache한 클라이언트가 유예 시간 동안 같은 카드를 받을 수 있습니다.
+- 정리는 current, previous, retired가 참조하지 않는 객체만 삭제합니다. 한 번도 참조되지 않은 객체는 아직 manifest에 반영되지 않은 다른 발행의 것일 수 있으므로 업로드 후 1시간이 지나야 삭제합니다.
+- 목록 조회 뒤 삭제 직전에 저장된 최신 manifest를 다시 읽어 그 참조도 보존합니다. 최신 manifest 확인과 삭제 사이의 짧은 경합은 남아 있습니다.
 
 4단계 이전에 실패하면 manifest는 바뀌지 않으므로 마지막 성공 카드가 그대로 제공됩니다. 남은 고아 객체는 다음 성공 발행의 정리 단계에서 삭제됩니다.
 
@@ -44,7 +51,8 @@
 - manifest와 checkpoint 조회는 `useCache: false`로 origin을 읽습니다.
 - checkpoint lease guard는 ETag를 문자열로 비교하지 않고 lease 소유권만 확인합니다. Blob은 `get()` 응답 헤더와 `put()` 응답에서 ETag를 따로 받으므로 revision 일치는 조건부 쓰기에 맡깁니다.
 - 같은 store 금지 검사는 SDK와 같이 `store_` 접두사를 제거한 뒤 비교합니다.
-- 생성이 조건인 쓰기(`absent`)는 SDK가 기존 객체 충돌을 별도 오류로 구분하지 않으므로, 실패 후 `head()`로 객체가 있는지 확인해 충돌로 판정합니다.
+- 조건부 쓰기가 실패하면 객체를 다시 읽어 판정합니다. 방금 쓴 내용과 같으면 성공, 다른 내용이면 충돌, 객체가 없으면 원래 오류입니다. SDK가 기존 객체 생성 충돌을 별도 오류로 구분하지 않고, 응답이 유실된 PUT을 자동 재시도하면 실제로 반영된 쓰기도 충돌 오류로 끝나기 때문입니다.
+- SDK는 네트워크 오류를 `VERCEL_BLOB_RETRIES`(기본 10회) 만큼 지수 backoff로 재시도합니다. 이 값은 프로세스 전역 환경 변수이므로 코드에서 바꾸지 않습니다. Function `maxDuration` 안에 재시도가 끝나도록 배포 환경에서 작은 값을 설정하는 것을 권장하며, 실제 값은 HOST-13 staging 검증에서 정합니다. 호출자가 넘긴 abort signal은 read·write 요청에 전달됩니다.
 
 ## 마스코트 registry 변경
 
