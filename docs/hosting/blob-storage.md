@@ -60,4 +60,4 @@ manifest를 읽을 때 registry에 없는 마스코트 ID는 오류 대신 목�
 
 ## 범위 밖
 
-실제 Blob store 생성·프로젝트 연결, 카드 route 연결(HOST-07), Cron·bootstrap 연결(HOST-08)은 이 문서의 범위가 아닙니다. filesystem adapter의 조건부 쓰기는 한 프로세스 안에서만 직렬화합니다.
+실제 Blob store 생성·프로젝트 연결, Cron·bootstrap 연결(HOST-08)은 이 문서의 범위가 아닙니다. 발행된 카드를 읽는 route는 [`card-route.md`](./card-route.md)에 정리합니다. filesystem adapter의 조건부 쓰기는 한 프로세스 안에서만 직렬화합니다.
