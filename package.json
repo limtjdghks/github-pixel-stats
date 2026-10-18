@@ -16,6 +16,8 @@
     "build": "npm run typecheck && npm run build:fixture"
   },
   "dependencies": {
+    "@vercel/blob": "2.8.2",
+    "@vercel/oidc": "3.8.10",
     "fast-xml-parser": "5.11.1",
     "yaml": "2.9.0"
   },
