@@ -27,9 +27,9 @@ function parseJson(body: string, label: string): unknown {
   }
 }
 
-export async function readManifest(store: ObjectStore, username: string): Promise<StoredManifest | null> {
+export async function readManifest(store: ObjectStore, username: string, signal?: AbortSignal): Promise<StoredManifest | null> {
   assertPrivate(store);
-  const stored = await store.read(manifestPathname(username));
+  const stored = await store.read(manifestPathname(username), signal);
   if (stored === null) return null;
   return { manifest: parseManifest(parseJson(stored.body, "Manifest"), username), etag: stored.etag };
 }
