@@ -47,9 +47,10 @@ export class ObjectCheckpointStore implements CheckpointStore {
   ): Promise<string | null> {
     const pathname = checkpointPathname(key);
     if (guard !== null) {
-      // lease 확인과 쓰기 사이에 다른 실행이 끼어들어도 아래 ETag 조건이 그 쓰기를 거절합니다.
+      // revision 일치는 아래 ETag 조건부 쓰기가 판정합니다. Blob은 read와 write가 ETag를 다른 응답에서
+      // 받으므로 여기서 문자열로 비교하지 않고, lease 소유권만 확인합니다.
       const current = await this.store.read(pathname, signal);
-      if (current === null || current.etag !== expectedRevision || !hasLease(current.body, guard)) {
+      if (current === null || !hasLease(current.body, guard)) {
         return null;
       }
     }

@@ -62,7 +62,10 @@ function renderRelease(result: CollectionResult, classifier: LinguistClassifier)
   }
   return {
     release: {
-      version: createReleaseVersion(snapshot, nextState),
+      version: createReleaseVersion(snapshot, nextState, {
+        languages: languagesSvg,
+        ...Object.fromEntries(MASCOT_IDS.map((id) => [`stats-${id}`, statsSvgs[id]])),
+      }),
       generatedAt: snapshot.generatedAt,
       mascots: [...MASCOT_IDS],
     },

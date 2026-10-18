@@ -37,14 +37,17 @@ test("pathnames normalize usernames and keep private and public prefixes apart",
   assert.throws(() => releasePathnames("fixture-alpha", "../x", ["cat"]), /Invalid release version/);
 });
 
-test("release versions are stable for the same result and change with content", async () => {
+test("release versions are stable for the same result and change with data or rendered cards", async () => {
   const { snapshot, state } = await loadUserFixture("fixture-alpha");
-  const version = createReleaseVersion(snapshot, state);
+  const cards = { languages: "<svg>a</svg>", cat: "<svg>b</svg>" };
+  const version = createReleaseVersion(snapshot, state, cards);
   assert.match(version, /^\d{8}-\d{6}-[0-9a-f]{16}$/);
-  assert.equal(createReleaseVersion(structuredClone(snapshot), structuredClone(state)), version);
+  assert.equal(createReleaseVersion(structuredClone(snapshot), structuredClone(state), { ...cards }), version);
   const changed = structuredClone(snapshot);
   changed.stats.stars += 1;
-  assert.notEqual(createReleaseVersion(changed, state), version);
+  assert.notEqual(createReleaseVersion(changed, state, cards), version);
+  assert.notEqual(createReleaseVersion(snapshot, state, { ...cards, cat: "<svg>renderer v2</svg>" }), version,
+    "a renderer change must not reuse the pathnames of cards that are already cached");
 });
 
 test("manifests are validated and expose only current and previous release pathnames", () => {
@@ -69,12 +72,27 @@ test("manifests are validated and expose only current and previous release pathn
     [manifest, "fixture-beta", /unexpected username/],
     [{ ...manifest, publishedAt: "never" }, "fixture-alpha", /invalid publishedAt/],
     [{ ...manifest, current: { ...manifest.current, version: "../../x" } }, "fixture-alpha", /invalid release/],
-    [{ ...manifest, current: { ...manifest.current, mascots: ["dog"] } }, "fixture-alpha", /invalid release/],
+    [{ ...manifest, current: { ...manifest.current, mascots: ["cat", "cat"] } }, "fixture-alpha", /invalid release/],
+    [{ ...manifest, current: { ...manifest.current, mascots: [1] } }, "fixture-alpha", /invalid release/],
     [{ ...manifest, current: { ...manifest.current, mascots: [] } }, "fixture-alpha", /invalid release/],
   ];
   for (const [value, username, error] of invalid) {
     assert.throws(() => parseManifest(value, username), error);
   }
+});
+
+test("manifests stay readable after a mascot is removed from the registry", () => {
+  const release = { version: VERSION, generatedAt: "2026-09-12T23:59:59.000Z" };
+  const manifest = parseManifest({
+    schemaVersion: 1,
+    username: "fixture-alpha",
+    publishedAt: "2026-10-01T00:00:00.000Z",
+    current: { ...release, mascots: ["retired", "cat"] },
+    previous: { ...release, mascots: ["retired"] },
+  }, "fixture-alpha");
+  assert.deepEqual(manifest.current.mascots, ["cat"]);
+  assert.deepEqual(manifest.previous?.mascots, []);
+  assert.equal([...referencedPathnames(manifest).public].some((pathname) => pathname.includes("retired")), false);
 });
 
 function checkpoint(lease: CollectionCheckpoint["lease"]): CollectionCheckpoint {
@@ -98,6 +116,24 @@ test("object checkpoint store uses ETag revisions and honors lease guards", asyn
   const second = await store.compareAndSwap("fixture-alpha", first, checkpoint(lease), { owner: "worker-a", now }, signal);
   assert.ok(second);
   assert.notEqual(second, first);
+});
+
+test("object checkpoint lease guards do not compare read and write ETag strings", async () => {
+  const signal = new AbortController().signal;
+  const memory = new MemoryObjectStore("private");
+  // Blob의 get 응답 헤더 ETag는 put 응답 ETag와 표기가 다를 수 있으므로 read 결과만 다른 형식으로 바꿉니다.
+  const store = new ObjectCheckpointStore(Object.assign(Object.create(memory) as MemoryObjectStore, {
+    read: async (pathname: string) => {
+      const stored = await memory.read(pathname);
+      return stored && { ...stored, etag: `W/${stored.etag}` };
+    },
+  }));
+  const lease = { owner: "worker-a", expiresAt: "2026-10-01T00:05:00.000Z" };
+  const first = await store.compareAndSwap("fixture-alpha", null, checkpoint(lease), null, signal);
+  assert.ok(first);
+  const now = "2026-10-01T00:01:00.000Z";
+  assert.ok(await store.compareAndSwap("fixture-alpha", first, checkpoint(lease), { owner: "worker-a", now }, signal));
+  assert.equal(await store.compareAndSwap("fixture-alpha", first, checkpoint(lease), { owner: "worker-a", now }, signal), null);
 });
 
 test("object checkpoint store refuses public stores", () => {
