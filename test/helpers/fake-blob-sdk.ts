@@ -1,4 +1,4 @@
-import { BlobError, BlobNotFoundError, BlobPreconditionFailedError } from "@vercel/blob";
+import { BlobError, BlobPreconditionFailedError } from "@vercel/blob";
 import type { BlobSdk } from "../../src/storage/vercel-blob-store.js";
 
 interface FakeBlob {
@@ -8,7 +8,7 @@ interface FakeBlob {
 }
 
 export interface RecordedCall {
-  method: "get" | "put" | "head" | "list" | "del";
+  method: "get" | "put" | "list" | "del";
   options: Record<string, unknown>;
 }
 
@@ -55,17 +55,6 @@ export class FakeBlobSdk implements BlobSdk {
     return {
       url: `https://fake.blob/${pathname}`, downloadUrl: `https://fake.blob/${pathname}?download=1`, pathname,
       contentType: options.contentType ?? "application/octet-stream", contentDisposition: "inline", etag,
-    };
-  }
-
-  async head(pathname: string, options: Parameters<BlobSdk["head"]>[1]) {
-    this.record("head", options);
-    const blob = this.blobs.get(pathname);
-    if (!blob) throw new BlobNotFoundError();
-    return {
-      size: blob.body.length, uploadedAt: blob.uploadedAt, pathname, contentType: "application/octet-stream",
-      contentDisposition: "inline", url: `https://fake.blob/${pathname}`, downloadUrl: `https://fake.blob/${pathname}`,
-      cacheControl: "max-age=60", etag: blob.etag,
     };
   }
 

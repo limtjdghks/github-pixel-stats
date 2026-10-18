@@ -1,14 +1,11 @@
 import {
-  BlobNotFoundError,
   BlobPreconditionFailedError,
   del,
   get,
-  head,
   list,
   put,
   type GetBlobResult,
   type GetCommandOptions,
-  type HeadBlobResult,
   type ListBlobResult,
   type ListCommandOptions,
   type PutBlobResult,
@@ -36,12 +33,11 @@ interface BlobCredentials {
 export interface BlobSdk {
   get(pathname: string, options: GetCommandOptions): Promise<GetBlobResult | null>;
   put(pathname: string, body: string, options: PutCommandOptions): Promise<PutBlobResult>;
-  head(pathname: string, options: BlobCredentials): Promise<HeadBlobResult>;
   list(options: ListCommandOptions): Promise<ListBlobResult>;
   del(pathnames: string[], options: BlobCredentials): Promise<void>;
 }
 
-const defaultSdk: BlobSdk = { get, put, head, list, del };
+const defaultSdk: BlobSdk = { get, put, list, del };
 const DELETE_BATCH_SIZE = 100;
 
 export interface VercelBlobStoreOptions {
@@ -111,20 +107,17 @@ export class VercelBlobObjectStore implements ObjectStore {
         : { ...base, allowOverwrite: condition.kind === "content-addressed" });
       return result.etag;
     } catch (error) {
-      if (error instanceof BlobPreconditionFailedError) return null;
-      // SDK는 이미 존재하는 객체 생성을 별도 오류 타입으로 구분하지 않으므로 실제 존재 여부로 판정합니다.
-      if (condition.kind === "absent" && await this.exists(pathname, credentials)) return null;
-      throw error;
-    }
-  }
-
-  private async exists(pathname: string, credentials: BlobCredentials): Promise<boolean> {
-    try {
-      await this.sdk.head(pathname, credentials);
-      return true;
-    } catch (error) {
-      if (error instanceof BlobNotFoundError) return false;
-      throw error;
+      const precondition = error instanceof BlobPreconditionFailedError;
+      if (!precondition && condition.kind !== "absent") throw error;
+      // SDK는 이미 존재하는 객체 생성을 별도 오류 타입으로 구분하지 않습니다. 또 응답이 유실된 PUT을
+      // 자동 재시도하면 실제로 반영된 쓰기도 충돌로 끝납니다. 그래서 현재 객체를 다시 읽어
+      // 방금 쓴 내용이면 성공, 다른 내용이면 충돌, 객체가 없으면 원래 오류로 판정합니다.
+      const current = await this.read(pathname, options.signal);
+      if (current === null) {
+        if (precondition) return null;
+        throw error;
+      }
+      return current.body === body ? current.etag : null;
     }
   }
 

@@ -95,7 +95,14 @@ export class FilesystemObjectStore implements ObjectStore {
     for (const name of names) {
       const pathname = name.split(sep).join("/");
       if (!pathname.startsWith(prefix)) continue;
-      const info = await stat(join(this.root, name));
+      let info;
+      try {
+        info = await stat(join(this.root, name));
+      } catch (error) {
+        // readdir 이후 다른 정리 작업이 지운 파일은 목록에서 뺍니다.
+        if (isMissing(error)) continue;
+        throw error;
+      }
       if (info.isFile()) {
         entries.push({ pathname, uploadedAt: info.mtime });
       }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BlobServiceNotAvailable } from "@vercel/blob";
+import { BlobError, BlobPreconditionFailedError, BlobServiceNotAvailable } from "@vercel/blob";
 import { VercelBlobObjectStore } from "../src/storage/vercel-blob-store.js";
 import { FakeBlobSdk } from "./helpers/fake-blob-sdk.js";
 
@@ -54,11 +54,36 @@ test("vercel blob adapter maps conditional failures to null but rethrows service
   assert.ok(etag);
   assert.equal(await blobStore.write("manifests/alpha.json", "two", { ...write, condition: { kind: "absent" } }), null);
   assert.equal(await blobStore.write("manifests/alpha.json", "two", { ...write, condition: { kind: "match", etag: "\"old\"" } }), null);
-  const match = sdk.calls.at(-1);
+  const match = sdk.calls.findLast((call) => call.method === "put");
   assert.equal(match?.options.ifMatch, "\"old\"");
   assert.equal(match?.options.allowOverwrite, undefined);
 
   sdk.put = async () => { throw new BlobServiceNotAvailable(); };
   await assert.rejects(blobStore.write("manifests/beta.json", "x", { ...write, condition: { kind: "absent" } }), BlobServiceNotAvailable);
   await assert.rejects(blobStore.write("manifests/alpha.json", "x", { ...write, condition: { kind: "match", etag } }), BlobServiceNotAvailable);
+});
+
+test("vercel blob adapter treats a write that landed before an SDK retry failure as success", async () => {
+  // 첫 PUT은 반영됐지만 응답이 유실되고, SDK 자동 재시도가 충돌 오류로 끝나는 상황을 흉내 냅니다.
+  const sdk = new FakeBlobSdk();
+  const { store: blobStore } = store("private", sdk);
+  const landedThenFailed = (failure: () => Error) => async (...args: Parameters<FakeBlobSdk["put"]>) => {
+    await FakeBlobSdk.prototype.put.apply(sdk, args);
+    throw failure();
+  };
+
+  sdk.put = landedThenFailed(() => new BlobError("This blob already exists."));
+  const created = await blobStore.write("manifests/alpha.json", "one", { ...write, condition: { kind: "absent" } });
+  assert.equal(created, sdk.blobs.get("manifests/alpha.json")?.etag);
+
+  sdk.put = landedThenFailed(() => new BlobPreconditionFailedError());
+  const replaced = await blobStore.write("manifests/alpha.json", "two", { ...write, condition: { kind: "match", etag: created! } });
+  assert.equal(replaced, sdk.blobs.get("manifests/alpha.json")?.etag);
+  assert.notEqual(replaced, created);
+
+  // 다른 실행이 쓴 내용이 남아 있으면 여전히 충돌입니다.
+  sdk.put = async () => { throw new BlobPreconditionFailedError(); };
+  assert.equal(await blobStore.write("manifests/alpha.json", "three", { ...write, condition: { kind: "match", etag: replaced! } }), null);
+  sdk.put = async () => { throw new BlobError("This blob already exists."); };
+  assert.equal(await blobStore.write("manifests/alpha.json", "four", { ...write, condition: { kind: "absent" } }), null);
 });
