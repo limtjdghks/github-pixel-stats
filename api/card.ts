@@ -1,10 +1,12 @@
+import { cardResponse } from "../src/hosting/card-response.js";
 import { readHostingConfig } from "../src/hosting/environment.js";
-import { unavailableResponse } from "../src/hosting/http.js";
+import { createVercelBlobStores } from "../src/storage/vercel-blob-store.js";
 
-readHostingConfig(process.env);
+const { blobStores } = readHostingConfig(process.env);
+const stores = blobStores === undefined ? undefined : createVercelBlobStores(blobStores);
 
 export default {
-  fetch(request: Request): Response {
-    return unavailableResponse(request, "card");
+  fetch(request: Request): Promise<Response> {
+    return cardResponse(request, stores);
   },
 };

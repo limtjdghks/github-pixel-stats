@@ -21,7 +21,7 @@
   },
   "rewrites": [
     { "source": "/healthz", "destination": "/api/health" },
-    { "source": "/:username/stats.svg", "destination": "/api/card?card=stats" },
-    { "source": "/:username/languages.svg", "destination": "/api/card?card=languages" }
+    { "source": "/:username/stats.svg", "destination": "/api/card?card=stats&username=:username" },
+    { "source": "/:username/languages.svg", "destination": "/api/card?card=languages&username=:username" }
   ]
 }
