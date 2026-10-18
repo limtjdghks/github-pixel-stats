@@ -1,6 +1,6 @@
 # HOST-05 Function 설정
 
-현재 호스팅 진입점은 골격입니다. `GET /healthz`는 외부 요청 없이 200 JSON을 반환하고, `/{username}/stats.svg`, `/{username}/languages.svg`, `/api/cron`은 501 JSON을 반환합니다. 카드 수집과 Cron 실행은 후속 작업에서 연결합니다.
+`GET /healthz`는 외부 요청 없이 200 JSON을 반환합니다. `/{username}/stats.svg`, `/{username}/languages.svg`는 발행된 카드나 상태 SVG를 반환하며 계약은 [`card-route.md`](./card-route.md)에 있습니다. `/api/cron`은 아직 501 JSON을 반환하며 수집과 Cron 실행은 HOST-08에서 연결합니다.
 
 ## 빌드
 
@@ -17,7 +17,7 @@
 | Preview | `preview` | 없음 |
 | Development | `development` 또는 로컬 실행 시 미설정 | 없음 |
 
-Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `CRON_SECRET`, `BLOB_PRIVATE_STORE_ID`, `BLOB_PUBLIC_STORE_ID`의 빈 값 여부를 검증합니다. 현재 Function은 이 값을 사용하지 않습니다. 운영 GitHub token과 운영 Blob store ID를 Preview에 등록하지 마세요. 프로젝트의 환경별 Secret 설정과 실제 수집 연결은 후속 작업에서 진행합니다.
+Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `CRON_SECRET`, `BLOB_PRIVATE_STORE_ID`, `BLOB_PUBLIC_STORE_ID`의 빈 값 여부를 검증합니다. 카드 Function은 두 Blob store ID만 사용합니다. 두 값이 모두 없으면 형식이 올바른 카드 요청에 `unavailable` 상태 SVG를 반환합니다. 응답 분기 전체는 [`card-route.md`](./card-route.md)에 있습니다. 나머지 값은 아직 사용하지 않습니다. 운영 GitHub token과 운영 Blob store ID를 Preview에 등록하지 마세요. 프로젝트의 환경별 Secret 설정과 실제 수집 연결은 후속 작업에서 진행합니다.
 
 ## Blob 저장소
 
