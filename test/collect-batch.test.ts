@@ -258,6 +258,40 @@ test("failed API request resumes explicitly without repeating saved pages", asyn
   assert.equal(f.calls.filter((request) => request.kind === "files" && request.sha === f.searched[0]!.sha).length, 1);
 });
 
+test("resumeFailed false returns a failed checkpoint without HTTP or restarting it", async () => {
+  const f = fixture();
+  f.dependencies.github.requestPage = async (request) => {
+    f.calls.push(structuredClone(request));
+    throw new Error("profile unavailable");
+  };
+  assert.equal((await collectStatsBatch(f.options(), f.dependencies)).status, "failed");
+  const count = f.calls.length;
+  const skipped = await collectStatsBatch(f.options({ resumeFailed: false }), f.dependencies);
+  assert.equal(skipped.status, "failed");
+  assert.equal(skipped.requests, 0);
+  assert.equal(skipped.checkpoint?.attempt, 1);
+  assert.equal(f.calls.length, count);
+});
+
+test("restartReadyUntil starts a new job only for ready results collected at or before the cutoff", async () => {
+  const f = fixture();
+  const first = await finish(f);
+  const count = f.calls.length;
+  f.clock.now = NOW + 86_400_000;
+  const kept = await collectStatsBatch(f.options({ restartReadyUntil: new Date(NOW - 1) }), f.dependencies);
+  assert.equal(kept.status, "ready");
+  assert.equal(kept.requests, 0);
+  assert.equal(f.calls.length, count);
+  assert.equal(kept.checkpoint?.jobId, first.checkpoint?.jobId);
+
+  const restarted = await collectStatsBatch(f.options({ restartReadyUntil: new Date(NOW) }), f.dependencies);
+  assert.equal(restarted.status, "ready");
+  assert.notEqual(restarted.checkpoint?.jobId, first.checkpoint?.jobId);
+  assert.equal(restarted.checkpoint?.period.to, new Date(f.clock.now).toISOString());
+  assert.equal(restarted.checkpoint?.attempt, 1);
+  assert.ok(f.calls.length > count);
+});
+
 test("rate-limit retry schedule survives JSON restart and each retry consumes a request", async () => {
   const f = fixture();
   let retries = 0;
@@ -530,7 +564,8 @@ test("memory checkpoint store serializes values and enforces revision, owner, ex
 
 test("invalid batch request and commit limits reject before any HTTP", async () => {
   const f = fixture();
-  for (const overrides of [{ maxRequests: -1 }, { maxRequests: 1.5 }, { maxNewCommits: -1 }, { checkpointReserveMs: 0 }]) {
+  for (const overrides of [{ maxRequests: -1 }, { maxRequests: 1.5 }, { maxNewCommits: -1 }, { checkpointReserveMs: 0 },
+    { restartReadyUntil: new Date(Number.NaN) }]) {
     await assert.rejects(collectStatsBatch(f.options(overrides), f.dependencies));
   }
   assert.equal(f.calls.length, 0);

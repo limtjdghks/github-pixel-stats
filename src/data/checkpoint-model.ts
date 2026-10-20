@@ -62,6 +62,13 @@ export interface BatchOptions {
   checkpointReserveMs: number;
   maxRequests: number;
   maxNewCommits?: number;
+  /**
+   * `ready` checkpoint의 수집 기간 끝(`period.to`)이 이 시각과 같거나 이르면 결과를 버리고 새 job을 시작합니다.
+   * 결과가 manifest에 발행된 것을 확인한 호출자만 넘겨야 합니다. 생략하면 `ready`를 그대로 반환합니다.
+   */
+  restartReadyUntil?: Date;
+  /** false이면 `failed` checkpoint를 재시작하지 않고 GitHub 요청 없이 `failed`를 반환합니다. 기본값은 재시작입니다. */
+  resumeFailed?: boolean;
 }
 
 export interface BatchDependencies extends Pick<CollectionDependencies, "loadState" | "loadClassifier" | "now"> {
