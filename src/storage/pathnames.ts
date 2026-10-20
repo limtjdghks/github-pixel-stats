@@ -39,12 +39,29 @@ export function createReleaseVersion(snapshot: StatsSnapshot, state: CollectorSt
   return `${stamp}-${hash}`;
 }
 
+export const CHECKPOINT_PREFIX = "checkpoints/";
+export const MANIFEST_PREFIX = "manifests/";
+
 export function checkpointPathname(username: string): string {
-  return `checkpoints/${userKey(username)}.json`;
+  return `${CHECKPOINT_PREFIX}${userKey(username)}.json`;
 }
 
 export function manifestPathname(username: string): string {
-  return `manifests/${userKey(username)}.json`;
+  return `${MANIFEST_PREFIX}${userKey(username)}.json`;
+}
+
+/**
+ * `checkpoints/{user}.json` 또는 `manifests/{user}.json` pathname의 사용자 key(소문자)를 돌려줍니다.
+ * 이 형식이 아니거나 사용자명 규칙에 맞지 않으면 null입니다.
+ */
+export function userKeyFromPathname(prefix: typeof CHECKPOINT_PREFIX | typeof MANIFEST_PREFIX, pathname: string): string | null {
+  if (!pathname.startsWith(prefix) || !pathname.endsWith(".json")) return null;
+  const key = pathname.slice(prefix.length, -".json".length);
+  try {
+    return key === userKey(key) ? key : null;
+  } catch {
+    return null;
+  }
 }
 
 export function releasePrefix(username: string): string {
