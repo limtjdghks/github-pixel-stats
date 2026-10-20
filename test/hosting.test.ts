@@ -44,7 +44,7 @@ test("hosting config rejects invalid values without echoing secrets", () => {
   assert.equal(JSON.stringify({ status: "ok" }).includes(secret), false);
 });
 
-test("health and unfinished cron endpoints return explicit states without external requests or secrets", async () => {
+test("health and unconfigured cron endpoints return explicit states without external requests or secrets", async () => {
   const originalFetch = globalThis.fetch;
   let fetchCount = 0;
   globalThis.fetch = async () => {
@@ -54,10 +54,10 @@ test("health and unfinished cron endpoints return explicit states without extern
   try {
     const cases = [
       [health, "/healthz", 200, { status: "ok" }],
-      [cron, "/api/cron", 501, { status: "not_implemented", endpoint: "cron" }],
+      [cron, "/api/cron", 503, { status: "not_configured" }],
     ] as const;
     for (const [handler, path, status, body] of cases) {
-      const response = handler.fetch(new Request(`https://example.test${path}`));
+      const response = await handler.fetch(new Request(`https://example.test${path}`));
       assert.equal(response.status, status, path);
       assert.equal(response.headers.get("Cache-Control"), "no-store", path);
       assert.deepEqual(await response.json(), body, path);
@@ -73,9 +73,12 @@ test("HEAD omits response bodies and unsupported methods return 405", async () =
   const head = health.fetch(new Request("https://example.test/healthz", { method: "HEAD" }));
   assert.equal(head.status, 200);
   assert.equal(await head.text(), "");
-  const post = cron.fetch(new Request("https://example.test/api/cron", { method: "POST" }));
+  const post = health.fetch(new Request("https://example.test/healthz", { method: "POST" }));
   assert.equal(post.status, 405);
   assert.equal(post.headers.get("Allow"), "GET, HEAD");
+  const cronHead = await cron.fetch(new Request("https://example.test/api/cron", { method: "HEAD" }));
+  assert.equal(cronHead.status, 405);
+  assert.equal(cronHead.headers.get("Allow"), "GET");
 });
 
 test("Vercel routes and function resource declarations match the public contract", async () => {
@@ -83,6 +86,7 @@ test("Vercel routes and function resource declarations match the public contract
     builds?: unknown;
     outputDirectory?: string;
     functions: Record<string, { includeFiles?: string; maxDuration: number; regions: string[] }>;
+    crons: Array<{ path: string; schedule: string }>;
     rewrites: Array<{ source: string; destination: string }>;
   };
   assert.equal(config.builds, undefined);
@@ -92,10 +96,17 @@ test("Vercel routes and function resource declarations match the public contract
     { source: "/:username/stats.svg", destination: "/api/card?card=stats&username=:username" },
     { source: "/:username/languages.svg", destination: "/api/card?card=languages&username=:username" },
   ]);
-  assert.equal(config.functions["api/card.ts"]?.includeFiles, "assets/fonts/**/*.woff2");
-  assert.equal(config.functions["api/cron.ts"]?.includeFiles, "data/languages.yml");
+  // Hobby Cron은 하루 1회만 허용되므로 매일 실행되는 UTC schedule 하나만 둡니다.
+  assert.deepEqual(config.crons, [{ path: "/api/cron", schedule: "17 18 * * *" }]);
+  // 카드 Function은 bootstrap에서, Cron은 갱신에서 수집·발행하므로 둘 다 폰트와 Linguist 데이터가 필요합니다.
+  for (const name of ["api/card.ts", "api/cron.ts"]) {
+    assert.equal(config.functions[name]?.includeFiles, "{assets/fonts/**/*.woff2,data/languages.yml}");
+  }
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(config.functions).map(([name, settings]) => [name, settings.maxDuration])),
+    { "api/health.ts": 10, "api/card.ts": 30, "api/cron.ts": 300 },
+  );
   for (const settings of Object.values(config.functions)) {
     assert.deepEqual(settings.regions, ["iad1"]);
-    assert.equal(settings.maxDuration, 10);
   }
 });

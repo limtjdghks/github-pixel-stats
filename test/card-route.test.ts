@@ -149,6 +149,39 @@ test("users without a manifest receive a pending card and nothing is written", a
   assert.deepEqual(publicStore.pathnames(), []);
 });
 
+test("only pending responses invoke the pending hook, and a failing hook keeps the pending card", async () => {
+  const published = await publishedStores();
+  const failingRead = await publishedStores();
+  failingRead.publicStore.read = async () => { throw new Error("network down"); };
+  const empty = { privateStore: new MemoryObjectStore("private"), publicStore: new MemoryObjectStore("public") };
+  const calls: string[] = [];
+  const onPending = (username: string) => { calls.push(username); };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const cases = [
+      ["/fixture-alpha/stats.svg", published, "ready"],
+      ["/bad--name/stats.svg", empty, "invalid-username"],
+      ["/fixture-alpha/stats.svg", undefined, "unavailable"],
+      ["/fixture-alpha/stats.svg", failingRead, "unavailable"],
+      ["/Fixture-Beta/languages.svg", empty, "pending"],
+    ] as const;
+    for (const [path, stores, status] of cases) {
+      const response = await cardResponse(get(path), stores, { onPending });
+      assert.equal(response.headers.get("X-Card-Status"), status, path);
+    }
+    assert.deepEqual(calls, ["Fixture-Beta"]);
+
+    const failing = await cardResponse(get("/fixture-beta/stats.svg"), empty, {
+      onPending: () => { throw new Error("schedule failed"); },
+    });
+    assert.equal(failing.status, 200);
+    assert.equal(failing.headers.get("X-Card-Status"), "pending");
+  } finally {
+    console.error = originalError;
+  }
+});
+
 test("invalid usernames receive the same status card without reflecting the input", async () => {
   const stores = { privateStore: new MemoryObjectStore("private"), publicStore: new MemoryObjectStore("public") };
   const bodies = new Set<string>();
@@ -197,7 +230,7 @@ test("storage reads that exceed the time budget return an unavailable card", asy
   const originalError = console.error;
   console.error = () => {};
   try {
-    const response = await cardResponse(get("/fixture-alpha/stats.svg"), { privateStore, publicStore }, 20);
+    const response = await cardResponse(get("/fixture-alpha/stats.svg"), { privateStore, publicStore }, { timeoutMs: 20 });
     assert.equal(response.headers.get("X-Card-Status"), "unavailable");
     assert.equal(receivedSignal?.aborted, true);
   } finally {

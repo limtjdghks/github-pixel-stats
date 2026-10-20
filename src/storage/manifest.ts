@@ -35,7 +35,7 @@ export interface CardManifest {
 /**
  * 참조가 끊긴 release를 지우기 전 유예 시간입니다.
  * 버전 경로를 cache한 클라이언트와 아직 manifest에 반영되지 않은 다른 발행을 보호하며,
- * 발행 한 번에 걸리는 최대 시간(현재 Function maxDuration 10초)보다 충분히 길어야 합니다.
+ * 발행 한 번에 걸리는 최대 시간(가장 긴 Cron Function maxDuration 300초)보다 충분히 길어야 합니다.
  */
 export const RELEASE_GRACE_MS = 60 * 60 * 1000;
 

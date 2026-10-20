@@ -45,8 +45,18 @@ function withinBudget<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
+export interface CardResponseOptions {
+  /** 저장소 읽기 예산입니다. 기본값은 `CARD_READ_TIMEOUT_MS`입니다. */
+  timeoutMs?: number;
+  /**
+   * manifest가 없어 `pending`으로 응답할 때만 응답 전에 한 번 호출합니다.
+   * 응답을 늦추지 않도록 background 작업을 예약만 하고 바로 반환해야 하며, 던진 오류는 응답에 영향을 주지 않습니다.
+   */
+  onPending?: (username: string) => void;
+}
+
 /**
- * 카드 URL 요청에 마지막으로 발행된 카드 또는 상태 SVG로 응답합니다. 저장소에는 쓰지 않습니다.
+ * 카드 URL 요청에 마지막으로 발행된 카드 또는 상태 SVG로 응답합니다. 응답 경로는 저장소에 쓰지 않습니다.
  * README 이미지 proxy가 오류 응답을 그리지 않으므로 상태 SVG도 200으로 응답하고 상태는 헤더로 구분합니다.
  * `stores`가 없으면(Blob store 미설정) 형식이 올바른 카드 요청은 모두 `unavailable`입니다.
  * 저장소 읽기가 `timeoutMs` 안에 끝나지 않으면 `unavailable`로 응답합니다.
@@ -54,7 +64,7 @@ function withinBudget<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
 export async function cardResponse(
   request: Request,
   stores: CardStores | undefined,
-  timeoutMs = CARD_READ_TIMEOUT_MS,
+  { timeoutMs = CARD_READ_TIMEOUT_MS, onPending }: CardResponseOptions = {},
 ): Promise<Response> {
   if (!methodAllowed(request)) {
     return methodNotAllowedResponse(request);
@@ -70,9 +80,15 @@ export async function cardResponse(
   try {
     const signal = AbortSignal.timeout(timeoutMs);
     const svg = await withinBudget(readPublishedCard(stores, username, card, signal), signal);
-    return svg === null ? status("pending") : svgResponse(request, svg, "ready");
+    if (svg !== null) return svgResponse(request, svg, "ready");
   } catch (error) {
     console.error("Card read failed:", error instanceof Error ? error.message : "unknown error");
     return status("unavailable");
   }
+  try {
+    onPending?.(username);
+  } catch (error) {
+    console.error("Pending hook failed:", error instanceof Error ? error.message : "unknown error");
+  }
+  return status("pending");
 }
