@@ -6,11 +6,11 @@
 
 ## SDK 상태
 
-`@vercel/blob`은 GPS-HOST-06에서 `2.8.2`로, OIDC token 조회용 `@vercel/oidc`는 `3.8.10`으로 고정 설치했습니다. `@vercel/functions`는 아직 설치하지 않았습니다.
+`@vercel/blob`은 GPS-HOST-06에서 `2.8.2`로, OIDC token 조회용 `@vercel/oidc`는 `3.8.10`으로 고정 설치했습니다. `@vercel/functions`는 GPS-HOST-08에서 `3.9.11`로 고정 설치했습니다(2026-10-21 확인, 당시 최신 `3.10.1`은 공개 2주 미만이라 제외).
 
 | 패키지 | 버전 | 상태 |
 | --- | ---: | --- |
-| `@vercel/functions` | `3.9.7` (2026-09-12 참고) | 미설치, GPS-HOST-08에서 재확인 |
+| `@vercel/functions` | `3.9.11` | 설치, GPS-HOST-08 |
 | `@vercel/blob` | `2.8.2` | 설치, GPS-HOST-06 |
 | `@vercel/oidc` | `3.8.10` | 설치, GPS-HOST-06 |
 
