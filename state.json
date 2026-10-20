@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-10-16T21:17:04.000Z",
+  "updatedAt": "2026-10-20T21:41:20.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -5909,6 +5909,17 @@
       "sha": "e048d522541447eab1ecc0a0f4521a091cc34a5c",
       "authoredAt": "2026-10-09T21:18:52.000+09:00",
       "languages": [
+        "Swift"
+      ]
+    },
+    "1427341255:7a1377e2d705127ef57eeb339b11c202a6e1142f": {
+      "repositoryId": 1427341255,
+      "repository": "limtjdghks/git-seminar-capture",
+      "sha": "7a1377e2d705127ef57eeb339b11c202a6e1142f",
+      "authoredAt": "2026-10-21T02:22:51.000+09:00",
+      "languages": [
+        "Other",
+        "Shell",
         "Swift"
       ]
     },
