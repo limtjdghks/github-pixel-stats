@@ -1,7 +1,7 @@
 export function jsonResponse(
   request: Request,
   status: number,
-  body: Record<string, string>,
+  body: Readonly<Record<string, unknown>>,
   headers: Record<string, string> = {},
 ): Response {
   return new Response(request.method === "HEAD" ? null : JSON.stringify(body), {
@@ -28,12 +28,4 @@ export function healthResponse(request: Request): Response {
     return methodNotAllowedResponse(request);
   }
   return jsonResponse(request, 200, { status: "ok" });
-}
-
-/** 아직 연결하지 않은 Cron 기능을 명시적으로 거절합니다. */
-export function unavailableResponse(request: Request, endpoint: "cron"): Response {
-  if (!methodAllowed(request)) {
-    return methodNotAllowedResponse(request);
-  }
-  return jsonResponse(request, 501, { status: "not_implemented", endpoint });
 }

@@ -10,15 +10,18 @@
     },
     "api/card.ts": {
       "regions": ["iad1"],
-      "maxDuration": 10,
-      "includeFiles": "assets/fonts/**/*.woff2"
+      "maxDuration": 30,
+      "includeFiles": "{assets/fonts/**/*.woff2,data/languages.yml}"
     },
     "api/cron.ts": {
       "regions": ["iad1"],
-      "maxDuration": 10,
-      "includeFiles": "data/languages.yml"
+      "maxDuration": 300,
+      "includeFiles": "{assets/fonts/**/*.woff2,data/languages.yml}"
     }
   },
+  "crons": [
+    { "path": "/api/cron", "schedule": "17 18 * * *" }
+  ],
   "rewrites": [
     { "source": "/healthz", "destination": "/api/health" },
     { "source": "/:username/stats.svg", "destination": "/api/card?card=stats&username=:username" },
