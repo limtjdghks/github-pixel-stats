@@ -79,7 +79,8 @@ function assertOptions(options: BatchOptions): void {
     !Number.isFinite(options.deadline.getTime()) ||
     !Number.isSafeInteger(options.checkpointReserveMs) || options.checkpointReserveMs <= 0 ||
     !Number.isSafeInteger(options.maxRequests) || options.maxRequests < 0 ||
-    (options.maxNewCommits !== undefined && (!Number.isSafeInteger(options.maxNewCommits) || options.maxNewCommits < 0))
+    (options.maxNewCommits !== undefined && (!Number.isSafeInteger(options.maxNewCommits) || options.maxNewCommits < 0)) ||
+    (options.restartReadyUntil !== undefined && !Number.isFinite(options.restartReadyUntil.getTime()))
   ) {
     throw new Error("Invalid collection batch limits.");
   }
@@ -110,7 +111,17 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
     const stored = await withinDeadline(dependencies.checkpoints.load(key, hardDeadline.signal), hardDeadline.signal);
     checkpoint = stored ? readCheckpoint(stored.value, username) : null;
     if (checkpoint?.status === "ready") {
-      return response("ready");
+      if (
+        options.restartReadyUntil === undefined ||
+        Date.parse(checkpoint.period.to) > options.restartReadyUntil.getTime()
+      ) {
+        return response("ready");
+      }
+      // 발행이 확인된 결과만 이 옵션으로 들어오므로, 같은 revision 위에 새 job을 조건부로 덮어씁니다.
+      checkpoint = null;
+    }
+    if (checkpoint?.status === "failed" && options.resumeFailed === false) {
+      return response("failed");
     }
     if (checkpoint?.lease && Date.parse(checkpoint.lease.expiresAt) > clock()) {
       return response("busy");
