@@ -1,6 +1,6 @@
 # HOST-07 카드 route
 
-`/{username}/stats.svg`와 `/{username}/languages.svg`는 가입 없이 사용할 수 있는 카드 URL입니다. 카드 Function은 manifest가 가리키는 마지막 성공 카드를 public Blob에서 읽어 같은 URL로 응답하며, 어떤 저장소에도 쓰지 않습니다.
+`/{username}/stats.svg`와 `/{username}/languages.svg`는 가입 없이 사용할 수 있는 카드 URL입니다. 카드 Function은 manifest가 가리키는 마지막 성공 카드를 public Blob에서 읽어 같은 URL로 응답합니다. 응답 경로는 어떤 저장소에도 쓰지 않으며, manifest가 없을 때만 background bootstrap이 checkpoint를 씁니다([`refresh.md`](./refresh.md)).
 
 ## 구성 요소
 
@@ -28,7 +28,7 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 | --- | --- | --- | --- |
 | current release 카드가 있음 | `ready` | 발행된 카드 | `public, max-age=300` |
 | current 카드 객체가 없고 previous 카드가 있음 | `ready` | previous 카드 | `public, max-age=300` |
-| manifest 없음 | `pending` | pending SVG | `no-store` |
+| manifest 없음(bootstrap 예약) | `pending` | pending SVG | `no-store` |
 | 사용자명 형식 오류 | `invalid-username` | 상태 SVG | `no-store` |
 | Blob store 미설정, manifest 손상, 카드 객체 없음, 읽기 실패·시간 초과 | `unavailable` | 상태 SVG | `no-store` |
 
@@ -40,4 +40,4 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 
 ## 범위 밖
 
-manifest가 없는 사용자의 수집 등록·bootstrap은 HOST-08, canonical URL redirect와 variant별 CDN cache 정책 확정은 HOST-09, 신규 사용자 제한·negative cache는 HOST-10입니다. 현재 Blob adapter는 모든 읽기에서 CDN cache를 거치지 않으므로, 불변 카드 객체의 cache 읽기도 HOST-09에서 다룹니다.
+manifest가 없는 사용자의 bootstrap은 [`refresh.md`](./refresh.md)에 있습니다. canonical URL redirect와 variant별 CDN cache 정책 확정은 HOST-09, 신규 사용자 제한·negative cache는 HOST-10입니다. 현재 Blob adapter는 모든 읽기에서 CDN cache를 거치지 않으므로, 불변 카드 객체의 cache 읽기도 HOST-09에서 다룹니다.
