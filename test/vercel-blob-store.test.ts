@@ -31,6 +31,15 @@ test("vercel blob adapter sends its access mode, store ID, and OIDC token on eve
   }
 });
 
+test("vercel blob adapter reads through the CDN cache only for immutable objects", async () => {
+  const { sdk, store: blobStore } = store("public");
+  await blobStore.write("cards/alpha/v1/languages.svg", "<svg/>", { ...write, condition: { kind: "content-addressed" } });
+  await blobStore.read("cards/alpha/v1/languages.svg", undefined, { immutable: true });
+  await blobStore.read("cards/alpha/v1/languages.svg", undefined, { immutable: false });
+  await blobStore.read("cards/alpha/v1/languages.svg");
+  assert.deepEqual(sdk.calls.filter((call) => call.method === "get").map((call) => call.options.useCache), [true, false, false]);
+});
+
 test("vercel blob adapter never exposes a blob URL from private reads", async () => {
   const { store: blobStore } = store("private");
   await blobStore.write("checkpoints/alpha.json", "{\"a\":1}", { ...write, condition: { kind: "absent" } });

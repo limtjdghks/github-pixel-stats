@@ -17,6 +17,7 @@ import {
   assertObjectPrefix,
   type ObjectEntry,
   type ObjectStore,
+  type ReadOptions,
   type StoreAccess,
   type StoredObject,
   type WriteOptions,
@@ -79,10 +80,11 @@ export class VercelBlobObjectStore implements ObjectStore {
       : { oidcToken, storeId: this.storeId, abortSignal: signal };
   }
 
-  async read(pathname: string, signal?: AbortSignal): Promise<StoredObject | null> {
+  async read(pathname: string, signal?: AbortSignal, options: ReadOptions = {}): Promise<StoredObject | null> {
     assertObjectPathname(pathname);
-    // manifest·checkpoint 조건부 갱신이 오래된 ETag를 읽지 않도록 CDN cache를 거치지 않습니다.
-    const result = await this.sdk.get(pathname, { access: this.access, useCache: false, ...await this.credentials(signal) });
+    // manifest·checkpoint 조건부 갱신이 오래된 ETag를 읽지 않도록 불변 객체가 아니면 CDN cache를 거치지 않습니다.
+    const useCache = options.immutable === true;
+    const result = await this.sdk.get(pathname, { access: this.access, useCache, ...await this.credentials(signal) });
     if (result === null) return null;
     if (result.statusCode !== 200) {
       throw new Error("Unexpected Blob read status.");
