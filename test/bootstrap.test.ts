@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { GitHubRequestError } from "../src/data/github-pages.js";
 import { BOOTSTRAP_MAX_REQUESTS, bootstrapUser } from "../src/hosting/bootstrap.js";
 import { boundedDeadline } from "../src/hosting/invocation-deadline.js";
 import { readManifest } from "../src/storage/private-repository.js";
@@ -55,4 +56,22 @@ test("background deadlines use the earlier of the budget and the invocation dead
   assert.equal(boundedDeadline(now, 20_000, undefined, 2_000).getTime(), REFRESH_NOW + 20_000);
   assert.equal(boundedDeadline(now, 20_000, new Date(REFRESH_NOW + 30_000), 2_000).getTime(), REFRESH_NOW + 20_000);
   assert.equal(boundedDeadline(now, 20_000, new Date(REFRESH_NOW + 10_000), 2_000).getTime(), REFRESH_NOW + 8_000);
+});
+
+test("a transient GitHub failure or rate limit during bootstrap resumes on a later card request", async () => {
+  for (const error of [
+    new GitHubRequestError("GitHub API 502", null, 502),
+    new GitHubRequestError("rate limited", 30 * 60_000, 403),
+  ]) {
+    const f = refreshFixture();
+    const request = f.dependencies.github.requestPage;
+    f.dependencies.github.requestPage = async () => { throw error; };
+    await bootstrapUser("fixture-user", deadline(REFRESH_NOW), f.dependencies);
+    assert.equal(await readManifest(f.privateStore, "fixture-user"), null);
+
+    f.dependencies.github.requestPage = request;
+    f.clock.now += 30 * 60_000;
+    await bootstrapUser("fixture-user", deadline(f.clock.now), f.dependencies);
+    assert.ok(await readManifest(f.privateStore, "fixture-user"), error.message);
+  }
 });

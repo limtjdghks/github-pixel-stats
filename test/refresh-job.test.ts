@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { GitHubRequestError } from "../src/data/github-pages.js";
 import { REFRESH_INTERVAL_MS } from "../src/hosting/refresh-policy.js";
 import { PUBLISH_RESERVE_MS, runRefreshJob } from "../src/hosting/refresh-job.js";
 import { checkpointPathname } from "../src/storage/pathnames.js";
@@ -106,4 +107,30 @@ test("a manifest conflict keeps the last published manifest", async () => {
   assert.equal(outcome.publish, "conflict");
   f.privateStore.write = write;
   assert.deepEqual(await readManifest(f.privateStore, "fixture-user"), before);
+});
+
+test("a past retry time left on the checkpoint is not reported as a rate limit", async () => {
+  const f = refreshFixture();
+  const request = f.dependencies.github.requestPage;
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 502", null, 502); };
+  const failed = await runRefreshJob("fixture-user", limits(REFRESH_NOW), f.dependencies);
+  assert.deepEqual([failed.status, failed.rateLimited], ["paused", false]);
+
+  // backoff가 지난 뒤 재개한 batch가 첫 요청이 끝나기 전에 deadline으로 멈추는 상황입니다.
+  f.clock.now += 60_000;
+  // job deadline 60초에서 발행 여유 5초와 checkpoint 여유 1초를 뺀 수집 마감 직후, lease 만료 전으로 시계를 옮깁니다.
+  f.dependencies.github.requestPage = async (page, signal) => {
+    f.clock.now += 54_500;
+    return request(page, signal);
+  };
+  const resumed = await runRefreshJob("fixture-user", limits(f.clock.now), f.dependencies);
+  assert.equal(resumed.status, "paused");
+  assert.equal(resumed.rateLimited, false);
+});
+
+test("a rate-limited batch is reported so callers can stop using the same token", async () => {
+  const f = refreshFixture();
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 30 * 60_000, 403); };
+  const outcome = await runRefreshJob("fixture-user", limits(REFRESH_NOW), f.dependencies);
+  assert.deepEqual(outcome, { status: "paused", publish: null, requests: 1, rateLimited: true });
 });

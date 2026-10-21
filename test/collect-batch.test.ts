@@ -292,7 +292,7 @@ test("restartReadyUntil starts a new job only for ready results collected at or 
   assert.ok(f.calls.length > count);
 });
 
-test("rate-limit retry schedule survives JSON restart and each retry consumes a request", async () => {
+test("rate-limit retry schedule survives JSON restart without consuming transient retries", async () => {
   const f = fixture();
   let retries = 0;
   f.dependencies.github.requestPage = async (request) => {
@@ -303,12 +303,14 @@ test("rate-limit retry schedule survives JSON restart and each retry consumes a 
   const first = await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies);
   assert.equal(first.status, "paused");
   assert.equal(first.requests, 1);
-  assert.equal(first.checkpoint?.retry.attempts, 1);
+  assert.equal(first.checkpoint?.retry.attempts, 0);
   assert.equal(first.checkpoint?.retry.nextAttemptAt, new Date(NOW + 2_000).toISOString());
+  assert.equal(first.rateLimitedUntil, new Date(NOW + 2_000).toISOString());
   f.restart();
   const early = await collectStatsBatch(f.options(), f.dependencies);
   assert.equal(early.status, "paused");
   assert.equal(early.requests, 0);
+  assert.equal(early.rateLimitedUntil, null);
   assert.equal(f.calls.length, 1);
   f.clock.now += 2_000;
   const second = await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies);
@@ -317,23 +319,52 @@ test("rate-limit retry schedule survives JSON restart and each retry consumes a 
   assert.equal(second.checkpoint?.cursor.stage, "repositories");
 });
 
-test("rate-limit failures exhaust three retries across invocations", async () => {
+test("repeated rate limits keep pausing until reset instead of failing the collection", async () => {
   const f = fixture();
   f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 1_000); };
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const result = await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies);
     assert.equal(result.requests, 1);
-    assert.equal(result.status, attempt === 3 ? "failed" : "paused");
-    if (attempt < 3) assert.equal(result.checkpoint?.retry.attempts, attempt + 1);
+    assert.equal(result.status, "paused");
+    assert.equal(result.checkpoint?.retry.attempts, 0);
     f.restart();
     f.clock.now += 1_000;
   }
 });
 
-test("excessive rate-limit delay fails rather than scheduling a long retry", async () => {
+test("a primary rate limit with a long reset pauses until the reset, capped at one hour", async () => {
   const f = fixture();
-  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 60_001); };
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 30 * 60_000); };
   const result = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(result.status, "paused");
+  assert.equal(result.rateLimitedUntil, new Date(NOW + 30 * 60_000).toISOString());
+  f.restart();
+  f.clock.now += 1_000;
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 5 * 60 * 60_000); };
+  f.clock.now += 30 * 60_000;
+  const capped = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(capped.rateLimitedUntil, new Date(f.clock.now + 60 * 60_000).toISOString());
+});
+
+test("5xx and network failures back off three times before failing, while 404 fails at once", async () => {
+  const f = fixture();
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 502", null, 502); };
+  const delays = [60_000, 5 * 60_000, 15 * 60_000];
+  for (const [attempt, delay] of delays.entries()) {
+    const result = await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies);
+    assert.equal(result.status, "paused");
+    assert.equal(result.rateLimitedUntil, null);
+    assert.equal(result.checkpoint?.retry.attempts, attempt + 1);
+    assert.equal(result.checkpoint?.retry.nextAttemptAt, new Date(f.clock.now + delay).toISOString());
+    f.restart();
+    f.clock.now += delay;
+  }
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("network", null); };
+  assert.equal((await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies)).status, "failed");
+
+  const missing = fixture();
+  missing.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 404", null, 404); };
+  const result = await collectStatsBatch(missing.options(), missing.dependencies);
   assert.equal(result.status, "failed");
   assert.equal(result.requests, 1);
 });
