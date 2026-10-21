@@ -3,6 +3,7 @@ import test from "node:test";
 import card from "../api/card.js";
 import { LANGUAGES_CARD, STATS_CARD } from "../src/config.js";
 import { LinguistClassifier } from "../src/data/linguist.js";
+import { canonicalCardPath } from "../src/hosting/card-request.js";
 import { cardResponse } from "../src/hosting/card-response.js";
 import type { CollectionResult } from "../src/model.js";
 import { DEFAULT_MASCOT_ID, type MascotId } from "../src/render/index.js";
@@ -58,9 +59,7 @@ test("published users receive the current release card from the public store", a
   const pathnames = releasePathnames("fixture-alpha", versions[0]!, [DEFAULT_MASCOT_ID]).public;
   const cases = [
     ["/fixture-alpha/stats.svg", pathnames.stats[DEFAULT_MASCOT_ID]],
-    ["/Fixture-Alpha/stats.svg?mascot=unknown", pathnames.stats[DEFAULT_MASCOT_ID]],
-    [`/fixture-alpha/stats.svg?mascot=${DEFAULT_MASCOT_ID}`, pathnames.stats[DEFAULT_MASCOT_ID]],
-    ["/fixture-alpha/languages.svg?mascot=unknown", pathnames.languages],
+    ["/fixture-alpha/languages.svg", pathnames.languages],
     ["/api/card?card=stats&username=fixture-alpha", pathnames.stats[DEFAULT_MASCOT_ID]],
     ["/api/card?card=languages&username=fixture-alpha", pathnames.languages],
   ] as const;
@@ -72,8 +71,89 @@ test("published users receive the current release card from the public store", a
     assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff", path);
     assert.match(response.headers.get("Content-Security-Policy") ?? "", /default-src 'none'/, path);
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=300", path);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=3600, stale-while-revalidate=86400", path);
     assert.equal(await response.text(), publicStore.objects.get(pathname)?.body, path);
   }
+});
+
+test("published card objects are read through the cache-friendly immutable read", async () => {
+  const { privateStore, publicStore } = await publishedStores();
+  const reads: [string, boolean | undefined][] = [];
+  for (const store of [privateStore, publicStore]) {
+    const read = store.read.bind(store);
+    store.read = (pathname, signal, options) => {
+      reads.push([pathname, options?.immutable]);
+      return read(pathname, signal, options);
+    };
+  }
+  await cardResponse(get("/fixture-alpha/stats.svg"), { privateStore, publicStore });
+  assert.deepEqual(reads.map(([pathname, immutable]) => [pathname.split("/")[0], immutable]), [
+    ["manifests", undefined],
+    ["cards", true],
+  ]);
+});
+
+test("non-canonical card URLs redirect to the canonical path without reading storage", async () => {
+  const { privateStore, publicStore } = await publishedStores();
+  for (const store of [privateStore, publicStore]) {
+    store.read = async () => assert.fail("redirects must not read storage");
+  }
+  forbidWrites(privateStore, publicStore);
+  const cases = [
+    ["/Fixture-Alpha/stats.svg", "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/stats.svg?mascot=unknown", "/fixture-alpha/stats.svg"],
+    [`/fixture-alpha/stats.svg?mascot=${DEFAULT_MASCOT_ID}`, "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/stats.svg?mascot=", "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/stats.svg?utm=readme", "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/languages.svg?mascot=unknown", "/fixture-alpha/languages.svg"],
+    ["/fixture-alpha/stats.svg?username=other&card=languages", "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/stats.svg?card=stats&card=stats", "/fixture-alpha/stats.svg"],
+    ["/api/card?card=stats&username=Fixture-Alpha&mascot=unknown", "/fixture-alpha/stats.svg"],
+    ["/api/card?card=stats&username=fixture-alpha&username=fixture-alpha", "/fixture-alpha/stats.svg"],
+    ["/api/card?card=languages&username=fixture-alpha&x=1", "/fixture-alpha/languages.svg"],
+  ] as const;
+  for (const [path, location] of cases) {
+    for (const method of ["GET", "HEAD"]) {
+      const response = await cardResponse(get(path, { method }), { privateStore, publicStore });
+      assert.equal(response.status, 308, `${method} ${path}`);
+      assert.equal(response.headers.get("Location"), location, `${method} ${path}`);
+      assert.equal(response.headers.get("Cache-Control"), "public, max-age=300", path);
+      assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=86400", path);
+      assert.equal(await response.text(), "", path);
+    }
+  }
+});
+
+test("canonical URLs never redirect in either the public or the rewritten form", async () => {
+  const { privateStore, publicStore } = await publishedStores();
+  const stores = { privateStore, publicStore };
+  // rewrite가 원래 query에 destination query를 합쳐 공개 경로 그대로 전달하는 경우도 정규 URL로 봅니다.
+  const canonical = [
+    "/fixture-alpha/stats.svg",
+    "/fixture-alpha/stats.svg?card=stats&username=fixture-alpha",
+    "/api/card?card=stats&username=fixture-alpha",
+    "/api/card?username=fixture-alpha&card=languages",
+  ];
+  for (const path of canonical) {
+    const response = await cardResponse(get(path), stores);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("X-Card-Status"), "ready", path);
+  }
+  // 어떤 비정규 URL도 redirect를 한 번 따라가면 정규 URL에 도달합니다.
+  for (const path of ["/Fixture-Alpha/stats.svg?mascot=unknown&x=1", "/api/card?card=languages&username=FIXTURE-ALPHA&mascot=cat"]) {
+    const location = (await cardResponse(get(path), stores)).headers.get("Location")!;
+    const followed = await cardResponse(get(location), stores);
+    assert.equal(followed.status, 200, path);
+    assert.equal(followed.headers.get("X-Card-Status"), "ready", path);
+  }
+});
+
+test("canonical card paths are lowercase and keep only non-default mascot variants", () => {
+  // registry에는 기본 마스코트 하나뿐이라, 이후 추가될 preset을 가정한 ID를 cast로 만듭니다.
+  const other = "other" as MascotId;
+  assert.equal(canonicalCardPath("Fixture-Alpha", { kind: "stats", mascot: DEFAULT_MASCOT_ID }), "/fixture-alpha/stats.svg");
+  assert.equal(canonicalCardPath("Fixture-Alpha", { kind: "stats", mascot: other }), "/fixture-alpha/stats.svg?mascot=other");
+  assert.equal(canonicalCardPath("fixture-alpha", { kind: "languages" }), "/fixture-alpha/languages.svg");
 });
 
 test("a missing current card falls back to the previous successful release", async () => {
@@ -87,19 +167,9 @@ test("a missing current card falls back to the previous successful release", asy
   assert.equal(await response.text(), publicStore.objects.get(previous!.stats[DEFAULT_MASCOT_ID])?.body);
 });
 
-test("query values that conflict with the path or each other never select another card", async () => {
-  const { privateStore, publicStore, versions } = await publishedStores();
+test("query values that conflict with each other never select another card", async () => {
+  const { privateStore, publicStore } = await publishedStores();
   const stores = { privateStore, publicStore };
-  const pathnames = releasePathnames("fixture-alpha", versions[0]!, [DEFAULT_MASCOT_ID]).public;
-  const ready = [
-    ["/fixture-alpha/stats.svg?username=other&card=languages", pathnames.stats[DEFAULT_MASCOT_ID]],
-    ["/api/card?card=stats&username=fixture-alpha&username=fixture-alpha", pathnames.stats[DEFAULT_MASCOT_ID]],
-  ] as const;
-  for (const [path, pathname] of ready) {
-    const response = await cardResponse(get(path), stores);
-    assert.equal(response.headers.get("X-Card-Status"), "ready", path);
-    assert.equal(await response.text(), publicStore.objects.get(pathname)?.body, path);
-  }
   const ambiguousUser = await cardResponse(get("/api/card?card=stats&username=fixture-alpha&username=other"), stores);
   assert.equal(ambiguousUser.headers.get("X-Card-Status"), "invalid-username");
   const ambiguousCard = await cardResponse(get("/api/card?card=stats&card=languages&username=fixture-alpha"), stores);
@@ -141,6 +211,7 @@ test("users without a manifest receive a pending card and nothing is written", a
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get("X-Card-Status"), "pending", path);
     assert.equal(response.headers.get("Cache-Control"), "no-store", path);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), null, path);
     const svg = await response.text();
     assertSvg(svg, path, size.width, size.height);
     assert.match(svg, /PREPARING/);
@@ -164,13 +235,14 @@ test("only pending responses invoke the pending hook, and a failing hook keeps t
       ["/bad--name/stats.svg", empty, "invalid-username"],
       ["/fixture-alpha/stats.svg", undefined, "unavailable"],
       ["/fixture-alpha/stats.svg", failingRead, "unavailable"],
-      ["/Fixture-Beta/languages.svg", empty, "pending"],
+      ["/Fixture-Beta/languages.svg", empty, null],
+      ["/fixture-beta/languages.svg", empty, "pending"],
     ] as const;
     for (const [path, stores, status] of cases) {
       const response = await cardResponse(get(path), stores, { onPending });
       assert.equal(response.headers.get("X-Card-Status"), status, path);
     }
-    assert.deepEqual(calls, ["Fixture-Beta"]);
+    assert.deepEqual(calls, ["fixture-beta"]);
 
     const failing = await cardResponse(get("/fixture-beta/stats.svg"), empty, {
       onPending: () => { throw new Error("schedule failed"); },
@@ -212,6 +284,7 @@ test("storage failures and missing stores return an unavailable card instead of 
       assert.equal(response.status, 200);
       assert.equal(response.headers.get("X-Card-Status"), "unavailable");
       assert.equal(response.headers.get("Cache-Control"), "no-store");
+      assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), null);
       assertSvg(await response.text(), "unavailable", LANGUAGES_CARD.width, LANGUAGES_CARD.height);
     }
   } finally {

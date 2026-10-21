@@ -3,9 +3,26 @@ import { readPublishedCard, type CardStores } from "../storage/published-card.js
 import { parseCardRequest } from "./card-request.js";
 import { jsonResponse, methodAllowed, methodNotAllowedResponse } from "./http.js";
 
-/** 카드 응답의 cache 정책입니다. variant별 CDN cache와 canonical URL은 HOST-09에서 확정합니다. */
-const PUBLISHED_CACHE_CONTROL = "public, max-age=300";
-const STATUS_CACHE_CONTROL = "no-store";
+/**
+ * 발행 카드의 cache 정책입니다. 브라우저·이미지 proxy는 5분, Vercel CDN은 1시간 동안 cache하고
+ * 이후 하루 동안은 이전 카드를 응답하면서 background에서 다시 읽습니다. 하루 1회 갱신이라 purge 없이 TTL로만 운영합니다.
+ */
+const PUBLISHED_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=300",
+  "Vercel-CDN-Cache-Control": "max-age=3600, stale-while-revalidate=86400",
+} as const;
+
+/**
+ * 정규 URL redirect의 cache 정책입니다. 대상은 요청 URL과 마스코트 registry로만 정해지므로 CDN에 하루 동안 둡니다.
+ * registry가 바뀌는 배포 뒤의 CDN cache 무효화 여부는 HOST-13 staging에서 확인합니다.
+ */
+const REDIRECT_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=300",
+  "Vercel-CDN-Cache-Control": "max-age=86400",
+} as const;
+
+/** 상태 SVG는 곧 바뀌거나 일시적인 상태이므로 어느 계층에서도 cache하지 않습니다. */
+const STATUS_CACHE_HEADERS = { "Cache-Control": "no-store" } as const;
 
 /**
  * 카드 읽기 전체 예산입니다. Function `maxDuration`(10초)에 걸려 504가 되기 전에 상태 SVG로 응답하도록
@@ -26,10 +43,15 @@ function svgResponse(request: Request, svg: string, status: CardStatus | "ready"
     status: 200,
     headers: {
       ...SVG_HEADERS,
-      "Cache-Control": status === "ready" ? PUBLISHED_CACHE_CONTROL : STATUS_CACHE_CONTROL,
+      ...(status === "ready" ? PUBLISHED_CACHE_HEADERS : STATUS_CACHE_HEADERS),
       "X-Card-Status": status,
     },
   });
+}
+
+/** 정규 카드 경로로 보냅니다. Function을 받는 host와 무관하도록 `Location`은 상대 경로입니다. */
+function canonicalRedirect(path: string): Response {
+  return new Response(null, { status: 308, headers: { ...REDIRECT_CACHE_HEADERS, Location: path } });
 }
 
 /**
@@ -58,6 +80,7 @@ export interface CardResponseOptions {
 /**
  * 카드 URL 요청에 마지막으로 발행된 카드 또는 상태 SVG로 응답합니다. 응답 경로는 저장소에 쓰지 않습니다.
  * README 이미지 proxy가 오류 응답을 그리지 않으므로 상태 SVG도 200으로 응답하고 상태는 헤더로 구분합니다.
+ * 사용자명이 올바른 비정규 URL은 저장소를 읽지 않고 정규 경로로 308 redirect합니다.
  * `stores`가 없으면(Blob store 미설정) 형식이 올바른 카드 요청은 모두 `unavailable`입니다.
  * 저장소 읽기가 `timeoutMs` 안에 끝나지 않으면 `unavailable`로 응답합니다.
  */
@@ -73,7 +96,8 @@ export async function cardResponse(
   if (parsed === null) {
     return jsonResponse(request, 404, { status: "not_found" });
   }
-  const { card, username } = parsed;
+  const { card, username, canonicalPath } = parsed;
+  if (canonicalPath !== undefined) return canonicalRedirect(canonicalPath);
   const status = (value: CardStatus) => svgResponse(request, renderStatusCard(value, card.kind), value);
   if (username === null) return status("invalid-username");
   if (stores === undefined) return status("unavailable");
