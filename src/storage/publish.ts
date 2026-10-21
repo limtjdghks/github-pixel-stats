@@ -13,7 +13,7 @@ import { removeUnreferencedReleases, type CleanupReport } from "./cleanup.js";
 import { nextManifest, type CardManifest, type CardRelease } from "./manifest.js";
 import type { ObjectStore } from "./object-store.js";
 import { createReleaseVersion, releasePathnames } from "./pathnames.js";
-import { readManifest, replaceManifest, writeReleaseState } from "./private-repository.js";
+import { readManifest, replaceManifest, writeReleaseState, type StoredManifest } from "./private-repository.js";
 
 /** 카드 pathname은 내용 hash를 포함해 바뀌지 않으므로 CDN·브라우저에 길게 둡니다. */
 const PUBLIC_CARD_CACHE_SECONDS = 365 * 24 * 60 * 60;
@@ -87,9 +87,23 @@ async function writeCards(store: ObjectStore, username: string, rendered: Render
   })));
 }
 
+/** 저장된 manifest가 이미 이 release이거나 더 새로운 snapshot을 가리키면 그 결과를 반환합니다. */
+function settledOutcome(stored: StoredManifest | null, release: CardRelease): PublishOutcome | null {
+  if (stored === null) return null;
+  const { current } = stored.manifest;
+  if (current.version === release.version) {
+    return { status: "unchanged", manifest: stored.manifest };
+  }
+  if (Date.parse(current.generatedAt) >= Date.parse(release.generatedAt)) {
+    return { status: "stale", manifest: stored.manifest };
+  }
+  return null;
+}
+
 /**
  * 수집 결과를 검증된 카드로 발행합니다.
- * 순서: SVG 생성·검증 → private snapshot·state 저장 → public 카드 저장 → manifest 조건부 교체 → 유예가 끝난 release 정리.
+ * 순서: SVG 생성·검증 → manifest 확인 → private snapshot·state 저장 → public 카드 저장 → manifest 조건부 교체 → 유예가 끝난 release 정리.
+ * 이미 발행된 결과(`unchanged`)나 오래된 결과(`stale`)는 저장소에 쓰지 않고 끝냅니다.
  * manifest 교체 전에 실패하면 예외를 던지며, 마지막 성공 manifest와 카드는 바뀌지 않습니다.
  */
 export async function publishRelease(result: CollectionResult, dependencies: PublishDependencies): Promise<PublishOutcome> {
@@ -100,19 +114,18 @@ export async function publishRelease(result: CollectionResult, dependencies: Pub
   // 저장 전에 검증해 실패한 결과가 저장소에 남지 않게 합니다.
   const rendered = renderRelease(result, dependencies.classifier);
   const { snapshot, nextState } = result;
+  let stored = await readManifest(privateStore, snapshot.username);
+  const settled = settledOutcome(stored, rendered.release);
+  if (settled !== null) return settled;
   await writeReleaseState(privateStore, rendered.release, snapshot, nextState);
   await writeCards(publicStore, snapshot.username, rendered);
 
   for (let attempt = 0; attempt < MAX_MANIFEST_ATTEMPTS; attempt += 1) {
-    const stored = await readManifest(privateStore, snapshot.username);
-    if (stored !== null) {
-      const { current } = stored.manifest;
-      if (current.version === rendered.release.version) {
-        return { status: "unchanged", manifest: stored.manifest };
-      }
-      if (Date.parse(current.generatedAt) >= Date.parse(rendered.release.generatedAt)) {
-        return { status: "stale", manifest: stored.manifest };
-      }
+    // 첫 시도는 위에서 읽은 manifest를 쓰고, 그 사이 다른 발행이 끼어들었으면 조건부 쓰기가 실패해 다시 읽습니다.
+    if (attempt > 0) {
+      stored = await readManifest(privateStore, snapshot.username);
+      const concurrent = settledOutcome(stored, rendered.release);
+      if (concurrent !== null) return concurrent;
     }
     const manifest = nextManifest(stored?.manifest ?? null, snapshot.username, rendered.release, dependencies.now());
     if (await replaceManifest(privateStore, manifest, stored)) {
