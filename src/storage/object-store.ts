@@ -22,14 +22,6 @@ export type WriteCondition =
   | { kind: "match"; etag: string }
   | { kind: "content-addressed" };
 
-export interface ReadOptions {
-  /**
-   * pathname이 한 번 쓰면 바뀌지 않는 객체(내용 주소 카드 등)일 때만 true로 둡니다.
-   * adapter가 오래된 cache 사본을 돌려줄 수 있으므로 manifest·checkpoint처럼 교체되는 객체에는 쓰지 않습니다.
-   */
-  immutable?: boolean;
-}
-
 export interface WriteOptions {
   contentType: string;
   cacheControlMaxAge: number;
@@ -44,7 +36,7 @@ export interface WriteOptions {
 export interface ObjectStore {
   readonly access: StoreAccess;
   /** 객체가 없으면 null을 반환합니다. */
-  read(pathname: string, signal?: AbortSignal, options?: ReadOptions): Promise<StoredObject | null>;
+  read(pathname: string, signal?: AbortSignal): Promise<StoredObject | null>;
   /** 새 ETag를 반환하고, 전제조건이 맞지 않으면 아무것도 바꾸지 않고 null을 반환합니다. */
   write(pathname: string, body: string, options: WriteOptions): Promise<string | null>;
   /** prefix로 시작하는 모든 객체를 반환합니다. 반환 순서는 계약에 포함하지 않습니다. */

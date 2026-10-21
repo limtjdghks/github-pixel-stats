@@ -76,23 +76,6 @@ test("published users receive the current release card from the public store", a
   }
 });
 
-test("published card objects are read through the cache-friendly immutable read", async () => {
-  const { privateStore, publicStore } = await publishedStores();
-  const reads: [string, boolean | undefined][] = [];
-  for (const store of [privateStore, publicStore]) {
-    const read = store.read.bind(store);
-    store.read = (pathname, signal, options) => {
-      reads.push([pathname, options?.immutable]);
-      return read(pathname, signal, options);
-    };
-  }
-  await cardResponse(get("/fixture-alpha/stats.svg"), { privateStore, publicStore });
-  assert.deepEqual(reads.map(([pathname, immutable]) => [pathname.split("/")[0], immutable]), [
-    ["manifests", undefined],
-    ["cards", true],
-  ]);
-});
-
 test("non-canonical card URLs redirect to the canonical path without reading storage", async () => {
   const { privateStore, publicStore } = await publishedStores();
   for (const store of [privateStore, publicStore]) {
