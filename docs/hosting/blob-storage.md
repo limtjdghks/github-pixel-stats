@@ -29,10 +29,10 @@
 
 ## 발행 순서
 
-1. 등록된 모든 마스코트의 stats 카드와 languages 카드를 렌더링하고 `validateGeneratedOutput()`으로 검증합니다. 검증에 실패하면 아무것도 저장하지 않습니다.
+1. 등록된 모든 마스코트의 stats 카드와 languages 카드를 렌더링하고 `validateGeneratedOutput()`으로 검증합니다. 검증에 실패하면 아무것도 저장하지 않습니다. 이어서 manifest를 읽어 같은 버전이 이미 현재 버전이면 `unchanged`, 같거나 더 새로운 snapshot이 발행되어 있으면 `stale`로 쓰기 없이 끝냅니다.
 2. private store에 release의 snapshot과 state를 저장합니다.
 3. public store에 카드를 저장합니다.
-4. manifest를 읽고 ETag 조건부 쓰기로 교체합니다. 같은 버전이 이미 현재 버전이면 `unchanged`, 같거나 더 새로운 snapshot이 발행되어 있으면 `stale`로 끝냅니다. 조건부 쓰기가 충돌하면 manifest를 다시 읽고 최대 3회 시도한 뒤 `conflict`를 반환합니다.
+4. 1단계에서 읽은 manifest의 ETag로 조건부 교체합니다. 조건부 쓰기가 충돌하면 manifest를 다시 읽어 `unchanged`·`stale`을 다시 판정하고, 최대 3회 시도한 뒤 `conflict`를 반환합니다.
 5. 새 manifest 발행 뒤 manifest가 참조하지 않는 객체를 삭제합니다. 정리 실패는 발행 결과에 기록하고 발행 자체는 성공으로 처리합니다.
 
 ## 보존과 정리
