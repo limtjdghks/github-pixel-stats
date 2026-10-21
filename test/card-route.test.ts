@@ -60,8 +60,8 @@ test("published users receive the current release card from the public store", a
   const cases = [
     ["/fixture-alpha/stats.svg", pathnames.stats[DEFAULT_MASCOT_ID]],
     ["/fixture-alpha/languages.svg", pathnames.languages],
-    ["/api/card?card=stats&username=fixture-alpha", pathnames.stats[DEFAULT_MASCOT_ID]],
-    ["/api/card?card=languages&username=fixture-alpha", pathnames.languages],
+    ["/api/card?__card=stats&__username=fixture-alpha", pathnames.stats[DEFAULT_MASCOT_ID]],
+    ["/api/card?__card=languages&__username=fixture-alpha", pathnames.languages],
   ] as const;
   for (const [path, pathname] of cases) {
     const response = await cardResponse(get(path), { privateStore, publicStore });
@@ -91,9 +91,12 @@ test("non-canonical card URLs redirect to the canonical path without reading sto
     ["/fixture-alpha/languages.svg?mascot=unknown", "/fixture-alpha/languages.svg"],
     ["/fixture-alpha/stats.svg?username=other&card=languages", "/fixture-alpha/stats.svg"],
     ["/fixture-alpha/stats.svg?card=stats&card=stats", "/fixture-alpha/stats.svg"],
-    ["/api/card?card=stats&username=Fixture-Alpha&mascot=unknown", "/fixture-alpha/stats.svg"],
-    ["/api/card?card=stats&username=fixture-alpha&username=fixture-alpha", "/fixture-alpha/stats.svg"],
-    ["/api/card?card=languages&username=fixture-alpha&x=1", "/fixture-alpha/languages.svg"],
+    ["/fixture-alpha/stats.svg?__card=languages", "/fixture-alpha/stats.svg"],
+    ["/fixture-alpha/stats.svg?__username=Fixture-Alpha", "/fixture-alpha/stats.svg"],
+    ["/api/card?__card=stats&__username=fixture-alpha&username=Fixture-Alpha", "/fixture-alpha/stats.svg"],
+    ["/api/card?__card=stats&__username=fixture-alpha&card=languages", "/fixture-alpha/stats.svg"],
+    ["/api/card?__card=stats&__username=Fixture-Alpha&mascot=unknown", "/fixture-alpha/stats.svg"],
+    ["/api/card?__card=languages&__username=fixture-alpha&x=1", "/fixture-alpha/languages.svg"],
   ] as const;
   for (const [path, location] of cases) {
     for (const method of ["GET", "HEAD"]) {
@@ -113,21 +116,57 @@ test("canonical URLs never redirect in either the public or the rewritten form",
   // rewrite가 원래 query에 destination query를 합쳐 공개 경로 그대로 전달하는 경우도 정규 URL로 봅니다.
   const canonical = [
     "/fixture-alpha/stats.svg",
-    "/fixture-alpha/stats.svg?card=stats&username=fixture-alpha",
-    "/api/card?card=stats&username=fixture-alpha",
-    "/api/card?username=fixture-alpha&card=languages",
+    "/fixture-alpha/stats.svg?__card=stats&__username=fixture-alpha",
+    "/fixture-alpha/stats.svg?__card=stats&__username=fixture-alpha&__username=fixture-alpha",
+    "/api/card?__card=stats&__username=fixture-alpha&__username=fixture-alpha",
+    "/api/card?__card=stats&__username=fixture-alpha",
+    "/api/card?__username=fixture-alpha&__card=languages",
   ];
   for (const path of canonical) {
     const response = await cardResponse(get(path), stores);
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get("X-Card-Status"), "ready", path);
   }
-  // 어떤 비정규 URL도 redirect를 한 번 따라가면 정규 URL에 도달합니다.
-  for (const path of ["/Fixture-Alpha/stats.svg?mascot=unknown&x=1", "/api/card?card=languages&username=FIXTURE-ALPHA&mascot=cat"]) {
+  // 어떤 비정규 URL도 redirect를 한 번 따라가면 정규 URL에 도달하며, Function이 받는 URL 형태와는 무관합니다.
+  const nonCanonical = [
+    "/Fixture-Alpha/stats.svg?mascot=unknown&x=1",
+    "/api/card?__card=languages&__username=FIXTURE-ALPHA&mascot=cat",
+    "/fixture-alpha/stats.svg?username=Fixture-Alpha&card=languages",
+  ];
+  for (const path of nonCanonical) {
     const location = (await cardResponse(get(path), stores)).headers.get("Location")!;
-    const followed = await cardResponse(get(location), stores);
-    assert.equal(followed.status, 200, path);
-    assert.equal(followed.headers.get("X-Card-Status"), "ready", path);
+    const [pathname, query = ""] = location.split("?");
+    const [, user, kind] = /^\/([^/]+)\/(stats|languages)\.svg$/.exec(pathname!)!;
+    const routing = `__card=${kind}&__username=${user}`;
+    const forms = [
+      location,
+      `${location}${query ? "&" : "?"}${routing}`,
+      `/api/card?${routing}${query ? `&${query}` : ""}`,
+      `/api/card?${query ? `${query}&` : ""}${routing}`,
+    ];
+    for (const form of forms) {
+      const followed = await cardResponse(get(form), stores);
+      assert.equal(followed.status, 200, `${path} -> ${form}`);
+      assert.equal(followed.headers.get("X-Card-Status"), "ready", `${path} -> ${form}`);
+    }
+  }
+});
+
+test("redirects come before storage configuration checks and only ever point at a card path", async () => {
+  const cases = [
+    ["/Fixture-Alpha/stats.svg", "/fixture-alpha/stats.svg"],
+    ["/api/card?__card=stats&__username=alice%0D%0A", "/alice/stats.svg"],
+    ["/api/card?__card=stats&__username=+alice", "/alice/stats.svg"],
+    ["/api/card?__card=languages&__username=%20Alice", "/alice/languages.svg"],
+  ] as const;
+  for (const [path, location] of cases) {
+    const response = await cardResponse(get(path), undefined);
+    assert.equal(response.status, 308, path);
+    assert.equal(response.headers.get("Location"), location, path);
+  }
+  for (const path of ["//evil.example/stats.svg", "/api/card?__card=stats&__username=%2F%2Fevil.example"]) {
+    const response = await cardResponse(get(path), undefined);
+    assert.equal(response.headers.get("Location"), null, path);
   }
 });
 
@@ -153,9 +192,9 @@ test("a missing current card falls back to the previous successful release", asy
 test("query values that conflict with each other never select another card", async () => {
   const { privateStore, publicStore } = await publishedStores();
   const stores = { privateStore, publicStore };
-  const ambiguousUser = await cardResponse(get("/api/card?card=stats&username=fixture-alpha&username=other"), stores);
+  const ambiguousUser = await cardResponse(get("/api/card?__card=stats&__username=fixture-alpha&__username=other"), stores);
   assert.equal(ambiguousUser.headers.get("X-Card-Status"), "invalid-username");
-  const ambiguousCard = await cardResponse(get("/api/card?card=stats&card=languages&username=fixture-alpha"), stores);
+  const ambiguousCard = await cardResponse(get("/api/card?__card=stats&__card=languages&__username=fixture-alpha"), stores);
   assert.equal(ambiguousCard.status, 404);
 });
 
@@ -240,7 +279,7 @@ test("only pending responses invoke the pending hook, and a failing hook keeps t
 test("invalid usernames receive the same status card without reflecting the input", async () => {
   const stores = { privateStore: new MemoryObjectStore("private"), publicStore: new MemoryObjectStore("public") };
   const bodies = new Set<string>();
-  for (const path of ["/bad--name/stats.svg", "/%3Cscript%3E/stats.svg", "/api/card?card=stats", "/api/card?card=stats&username=-x"]) {
+  for (const path of ["/bad--name/stats.svg", "/%3Cscript%3E/stats.svg", "/api/card?__card=stats", "/api/card?__card=stats&__username=-x"]) {
     const response = await cardResponse(get(path), stores);
     assert.equal(response.headers.get("X-Card-Status"), "invalid-username", path);
     const svg = await response.text();
@@ -304,7 +343,7 @@ test("card route rejects unknown cards and methods and omits HEAD bodies", async
   const post = await cardResponse(get("/fixture-alpha/stats.svg", { method: "POST" }), stores);
   assert.equal(post.status, 405);
   assert.equal(post.headers.get("Allow"), "GET, HEAD");
-  const unknown = await cardResponse(get("/api/card?card=other&username=fixture-alpha"), stores);
+  const unknown = await cardResponse(get("/api/card?__card=other&__username=fixture-alpha"), stores);
   assert.equal(unknown.status, 404);
   assert.deepEqual(await unknown.json(), { status: "not_found" });
 });
