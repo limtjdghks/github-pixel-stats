@@ -49,6 +49,17 @@ export function cronLimits(now: Date, invocationDeadline: Date | undefined): Cro
  */
 export async function runCron(limits: CronLimits, dependencies: RefreshDependencies): Promise<CronSummary> {
   const store = dependencies.stores.privateStore;
+  // job이 오류로 끝나도 이미 보낸 GitHub 요청이 예산에 남도록 요청 자체를 셉니다.
+  let requests = 0;
+  const counted: RefreshDependencies = {
+    ...dependencies,
+    github: {
+      requestPage(request, signal) {
+        requests += 1;
+        return dependencies.github.requestPage(request, signal);
+      },
+    },
+  };
   const [checkpoints, manifests] = await Promise.all([store.list(CHECKPOINT_PREFIX), store.list(MANIFEST_PREFIX)]);
   const users = selectDueUsers(checkpoints, manifests, dependencies.now());
   const summary: CronSummary = {
@@ -66,7 +77,7 @@ export async function runCron(limits: CronLimits, dependencies: RefreshDependenc
       summary.stopped = "deadline";
       break;
     }
-    if (summary.requests >= limits.maxRequests) {
+    if (requests >= limits.maxRequests) {
       summary.stopped = "requests";
       break;
     }
@@ -74,9 +85,8 @@ export async function runCron(limits: CronLimits, dependencies: RefreshDependenc
     try {
       const outcome = await runRefreshJob(username, {
         deadline: new Date(Math.min(limits.deadline.getTime(), now + limits.userBudgetMs)),
-        maxRequests: limits.maxRequests - summary.requests,
-      }, dependencies);
-      summary.requests += outcome.requests;
+        maxRequests: limits.maxRequests - requests,
+      }, counted);
       summary.statuses[outcome.status] += 1;
       if (outcome.publish === "published") summary.published += 1;
       if (outcome.rateLimited) {
@@ -88,5 +98,6 @@ export async function runCron(limits: CronLimits, dependencies: RefreshDependenc
       console.error("Cron refresh failed:", error instanceof Error ? error.message : "unknown error");
     }
   }
+  summary.requests = requests;
   return summary;
 }
