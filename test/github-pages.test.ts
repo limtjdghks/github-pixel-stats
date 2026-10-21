@@ -29,6 +29,29 @@ test("page source performs one request and exposes retry metadata without retryi
   assert.equal(requests, 1);
 });
 
+test("network failures become retryable request errors while cancellation stays a cancellation", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => { throw new TypeError("fetch failed"); });
+  await assert.rejects(
+    new GitHubRestPageSource("fixture-token").requestPage(filesRequest, new AbortController().signal),
+    (error: unknown) => {
+      assert.ok(error instanceof GitHubRequestError);
+      assert.equal(error.status, undefined);
+      assert.equal(error.retryDelayMs, null);
+      assert.ok(error.cause instanceof TypeError);
+      return true;
+    },
+  );
+  const controller = new AbortController();
+  t.mock.method(globalThis, "fetch", async () => {
+    controller.abort(new Error("deadline"));
+    throw new DOMException("aborted", "AbortError");
+  });
+  await assert.rejects(
+    new GitHubRestPageSource("fixture-token").requestPage(filesRequest, controller.signal),
+    /deadline/,
+  );
+});
+
 test("rate-limit metadata applies only to throttling and honors reset fallback", () => {
   assert.equal(getRateLimitDelay(new Response("", { status: 500, headers: { "retry-after": "1" } }), 0), null);
   assert.equal(getRateLimitDelay(new Response("", { status: 403, headers: {

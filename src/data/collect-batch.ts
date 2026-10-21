@@ -10,7 +10,7 @@ import {
 } from "./checkpoint-model.js";
 import { readCheckpoint } from "./checkpoint-validation.js";
 import { acceptPage, advanceWithoutRequest, nextPageRequest } from "./checkpoint-progress.js";
-import { GitHubRequestError, MAX_RATE_LIMIT_WAIT_MS, MAX_RETRIES } from "./github-pages.js";
+import { retryDecision } from "./github-pages.js";
 import { parseState } from "./state-validation.js";
 
 class LeaseConflict extends Error {}
@@ -95,11 +95,13 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
   const clock = () => dependencies.now().getTime();
   let requests = 0;
   let checkpoint: CollectionCheckpoint | null = null;
+  let rateLimitedUntil: string | null = null;
   const response = (status: BatchResult["status"]): BatchResult => ({
     status,
     checkpoint,
     requests,
     result: status === "ready" ? checkpoint?.result ?? null : null,
+    rateLimitedUntil: status === "paused" ? rateLimitedUntil : null,
   });
   if (clock() >= cutoff) {
     return response("paused");
@@ -236,12 +238,12 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
           if (workDeadline.signal.aborted || clock() >= cutoff) {
             return await pause();
           }
-          if (
-            error instanceof GitHubRequestError && error.retryDelayMs !== null &&
-            error.retryDelayMs <= MAX_RATE_LIMIT_WAIT_MS && checkpoint.retry.attempts < MAX_RETRIES
-          ) {
-            checkpoint.retry.attempts += 1;
-            checkpoint.retry.nextAttemptAt = new Date(clock() + error.retryDelayMs).toISOString();
+          const retry = retryDecision(error, checkpoint.retry.attempts);
+          if (retry !== null) {
+            // rate limit은 일시 오류 재시도 횟수를 소모하지 않고 reset까지 기다립니다.
+            if (retry.kind === "transient") checkpoint.retry.attempts += 1;
+            checkpoint.retry.nextAttemptAt = new Date(clock() + retry.delayMs).toISOString();
+            if (retry.kind === "rate-limit") rateLimitedUntil = checkpoint.retry.nextAttemptAt;
             return await pause();
           }
           throw error;

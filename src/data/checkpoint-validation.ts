@@ -6,7 +6,7 @@ import { assertSnapshot } from "../validation/output.js";
 import { CHECKPOINT_SCHEMA_VERSION, type CollectionCheckpoint, type CollectionCursor, type SearchInterval } from "./checkpoint-model.js";
 import { assembleCollectionResult, collectionPeriod } from "./collection-model.js";
 import { assertCachedCommit, parseState } from "./state-validation.js";
-import { commitKey } from "./github-pages.js";
+import { commitKey, TRANSIENT_RETRY_DELAYS_MS } from "./github-pages.js";
 
 function requireValue(condition: unknown, field: string): asserts condition {
   if (!condition) throw new Error(`Checkpoint has invalid ${field}.`);
@@ -162,7 +162,7 @@ export function readCheckpoint(value: unknown, expectedUsername: string): Collec
     attempts: integer(retryValue.attempts, "retry attempts"),
     nextAttemptAt: retryValue.nextAttemptAt === null ? null : date(retryValue.nextAttemptAt, "retry date"),
   };
-  requireValue(retry.attempts <= 3 && (retry.attempts !== 0 || retry.nextAttemptAt === null), "retry progress");
+  requireValue(retry.attempts <= TRANSIENT_RETRY_DELAYS_MS.length, "retry progress");
   let lease = null;
   if (raw.lease !== null) {
     const source = record(raw.lease, "lease");

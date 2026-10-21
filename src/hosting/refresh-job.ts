@@ -30,7 +30,7 @@ export interface RefreshOutcome {
   /** 이번 실행의 마지막 발행 결과입니다. 발행하지 않았으면 null입니다. */
   publish: PublishOutcome["status"] | null;
   requests: number;
-  /** GitHub rate limit으로 재시도가 예약됐습니다. 같은 token을 쓰는 다른 작업도 멈추는 것이 좋습니다. */
+  /** 이번 실행이 GitHub rate limit으로 멈췄습니다. 같은 token을 쓰는 다른 작업도 멈추는 것이 좋습니다. */
   rateLimited: boolean;
 }
 
@@ -68,7 +68,7 @@ export async function runRefreshJob(
       status: batch.status,
       publish,
       requests,
-      rateLimited: batch.status === "paused" && batch.checkpoint?.retry.nextAttemptAt != null,
+      rateLimited: batch.rateLimitedUntil !== null,
     });
     if (batch.status !== "ready" || batch.result === null || batch.checkpoint === null) return done();
 

@@ -44,6 +44,10 @@ interface RepositoryResponse {
 
 export const MAX_RETRIES = 3;
 export const MAX_RATE_LIMIT_WAIT_MS = 60_000;
+/** GitHub 기본 rate limit은 1시간 단위로 reset되므로, 그보다 긴 대기 헤더는 1시간으로 줄입니다. */
+export const MAX_RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000;
+/** 5xx·네트워크 오류를 n번째로 다시 시도하기 전 대기 시간입니다. 길이가 일시 오류 재시도 횟수 상한입니다. */
+export const TRANSIENT_RETRY_DELAYS_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
 
 function hasNextPage(link: string | null): boolean {
   return link?.split(",").some((part) => /rel="next"/.test(part)) ?? false;
@@ -93,11 +97,32 @@ export function getRateLimitDelay(response: Response, now = Date.now()): number 
   return null;
 }
 
+/** `status`가 없으면 응답을 받기 전에 실패한 네트워크 오류입니다. */
 export class GitHubRequestError extends Error {
-  constructor(message: string, readonly retryDelayMs: number | null, readonly status?: number) {
-    super(message);
+  constructor(message: string, readonly retryDelayMs: number | null, readonly status?: number, options?: ErrorOptions) {
+    super(message, options);
     this.name = "GitHubRequestError";
   }
+}
+
+export type RetryDecision = { kind: "rate-limit" | "transient"; delayMs: number };
+
+/**
+ * 실패한 GitHub 요청을 나중에 다시 시도할지 정합니다. 다시 시도하지 않을 오류는 null입니다.
+ * - rate limit: 대기 시간과 재시도 횟수에 관계없이 reset까지 기다립니다(최대 `MAX_RATE_LIMIT_PAUSE_MS`).
+ * - 5xx·네트워크 오류: `transientAttempts`(이미 소모한 일시 오류 재시도 횟수)가 상한보다 적을 때만 backoff 후 재시도합니다.
+ * - 그 밖의 응답(404 등): 다시 시도해도 같은 결과이므로 null입니다.
+ */
+export function retryDecision(error: unknown, transientAttempts: number): RetryDecision | null {
+  if (!(error instanceof GitHubRequestError)) return null;
+  if (error.retryDelayMs !== null) {
+    return { kind: "rate-limit", delayMs: Math.min(error.retryDelayMs, MAX_RATE_LIMIT_PAUSE_MS) };
+  }
+  const delayMs = TRANSIENT_RETRY_DELAYS_MS[transientAttempts];
+  if ((error.status === undefined || error.status >= 500) && delayMs !== undefined) {
+    return { kind: "transient", delayMs };
+  }
+  return null;
 }
 
 function pageUrl(request: PageRequest): URL {
@@ -179,15 +204,21 @@ export class GitHubRestPageSource implements GitHubPageSource {
   async requestPage(request: PageRequest, signal: AbortSignal): Promise<PageResult> {
     signal.throwIfAborted();
     const url = pageUrl(request);
-    const response = await fetch(url, {
-      signal,
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${this.token}`,
-        "User-Agent": "github-pixel-stats",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal,
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${this.token}`,
+          "User-Agent": "github-pixel-stats",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+    } catch (error) {
+      signal.throwIfAborted();
+      throw new GitHubRequestError(`GitHub API request failed for ${url.pathname}.`, null, undefined, { cause: error });
+    }
     signal.throwIfAborted();
     if (!response.ok) {
       const rateReset = getRateLimitNumber(response.headers, "x-ratelimit-reset");
