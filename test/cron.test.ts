@@ -98,6 +98,51 @@ test("overlapping cron runs publish each user once", async () => {
   assert.equal(f.calls.filter((request) => request.kind === "profile").length, 2);
 });
 
+test("a long primary rate limit stops the loop after one request without failing the remaining users", async () => {
+  const f = refreshFixture();
+  await register(f, "alpha", "beta", "gamma");
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 30 * 60_000, 403); };
+  const summary = await runCron(limits(f.clock.now), f.dependencies);
+  assert.deepEqual([summary.processed, summary.requests, summary.stopped], [1, 1, "rate-limit"]);
+  assert.equal(summary.statuses.failed, 0);
+  for (const username of ["alpha", "beta", "gamma"]) {
+    const stored = await f.dependencies.checkpoints.load(username, AbortSignal.timeout(1_000));
+    assert.notEqual((stored?.value as { status: string }).status, "failed");
+  }
+});
+
+test("stale published users are refreshed before unpublished users that keep failing", async () => {
+  const f = refreshFixture();
+  await register(f, "real");
+  await runCron(limits(f.clock.now), f.dependencies);
+  for (const ghost of ["ghost-a", "ghost-b", "ghost-c"]) f.missing.add(ghost);
+  await register(f, "ghost-a", "ghost-b", "ghost-c");
+  for (let day = 1; day <= 2; day += 1) {
+    f.clock.now += REFRESH_INTERVAL_MS;
+    const summary = await runCron(limits(f.clock.now, { maxRequests: 6 }), f.dependencies);
+    assert.equal(summary.published, 1);
+    const stored = await readManifest(f.privateStore, "real");
+    assert.equal(stored?.manifest.current.generatedAt, new Date(f.clock.now).toISOString());
+  }
+});
+
+test("GitHub requests of a user whose job throws still count toward the run limit", async () => {
+  const f = refreshFixture();
+  await register(f, "alpha", "beta", "gamma");
+  f.publicStore.write = async () => { throw new Error("public store unavailable"); };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const summary = await runCron(limits(f.clock.now, { maxRequests: 6 }), f.dependencies);
+    assert.equal(summary.requests, f.calls.length);
+    assert.ok(summary.requests <= 6);
+    assert.equal(summary.stopped, "requests");
+    assert.ok(summary.errors >= 1);
+  } finally {
+    console.error = originalError;
+  }
+});
+
 test("the loop stops at the deadline, request limit, or GitHub rate limit and leaves the rest for the next run", async () => {
   const f = refreshFixture();
   await register(f, "alpha", "beta");

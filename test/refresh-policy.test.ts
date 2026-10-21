@@ -7,7 +7,7 @@ const NOW = new Date("2026-10-02T18:00:00.000Z");
 const at = (offset: number) => new Date(NOW.getTime() + offset);
 const entry = (pathname: string, uploadedAt = NOW) => ({ pathname, uploadedAt });
 
-test("unpublished users come first, then published users whose manifest reached the refresh interval", () => {
+test("published users whose manifest reached the refresh interval come first, then unpublished users", () => {
   const due = selectDueUsers(
     [
       entry("checkpoints/zeta.json"), entry("checkpoints/alpha.json"),
@@ -20,7 +20,7 @@ test("unpublished users come first, then published users whose manifest reached 
     ],
     NOW,
   );
-  assert.deepEqual(due, ["alpha", "zeta", "older", "edge"]);
+  assert.deepEqual(due, ["older", "edge", "alpha", "zeta"]);
 });
 
 test("pathnames outside the user key format are ignored", () => {

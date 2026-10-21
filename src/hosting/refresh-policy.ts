@@ -9,8 +9,10 @@ export const REFRESH_INTERVAL_MS = 20 * 60 * 60 * 1000;
 
 /**
  * private store 목록만으로 이번 갱신 대상 사용자 key를 고릅니다. 객체 본문은 읽지 않습니다.
- * manifest가 없는(bootstrap이 끝나지 않은) 사용자를 먼저, 그다음 manifest가 오래된 순으로 반환합니다.
- * manifest `uploadedAt`은 마지막 manifest 교체 시각이므로 `REFRESH_INTERVAL_MS`보다 오래되면 대상입니다.
+ * manifest `uploadedAt`이 `REFRESH_INTERVAL_MS` 이상 지난 발행 사용자를 오래된 순으로 먼저,
+ * 그다음 manifest가 없는(bootstrap이 끝나지 않은) 사용자를 반환합니다.
+ * 미발행 사용자를 뒤에 두는 이유는 카드 URL만으로 생긴, 실패를 반복하는 checkpoint가
+ * 예산을 먼저 써서 이미 카드를 쓰는 사용자의 갱신을 막지 않게 하기 위해서입니다.
  */
 export function selectDueUsers(
   checkpoints: readonly ObjectEntry[],
@@ -32,5 +34,5 @@ export function selectDueUsers(
     .filter(([, uploadedAt]) => uploadedAt <= cutoff)
     .sort(([leftKey, left], [rightKey, right]) => left - right || leftKey.localeCompare(rightKey))
     .map(([key]) => key);
-  return [...[...pending].sort(), ...due];
+  return [...due, ...[...pending].sort()];
 }
