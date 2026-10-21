@@ -65,10 +65,18 @@ test("missing manifests are a cache miss for the next collection", async () => {
   assert.deepEqual(await loadPublishedState(privateStore, "fixture-alpha"), { state: null, cacheUsable: false });
 });
 
-test("republishing the same result is unchanged and a newer result keeps the previous release", async () => {
-  const { clock, dependencies } = await setup();
+test("republishing the same result is unchanged without writes and a newer result keeps the previous release", async () => {
+  const { clock, privateStore, publicStore, dependencies } = await setup();
   const first = await publishRelease(await result(), dependencies);
+  const writes = [privateStore, publicStore].map((store) => {
+    const counter = { count: 0 };
+    const write = store.write.bind(store);
+    store.write = async (...args) => { counter.count += 1; return write(...args); };
+    return counter;
+  });
   assert.equal((await publishRelease(await result(), dependencies)).status, "unchanged");
+  // 이미 발행된 결과는 release 객체를 다시 쓰지 않습니다.
+  assert.deepEqual(writes.map((counter) => counter.count), [0, 0]);
   clock.now += 60_000;
   const second = await publishRelease(await result(10), dependencies);
   assert.ok(first.status === "published" && second.status === "published");
