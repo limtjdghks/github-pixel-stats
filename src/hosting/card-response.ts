@@ -4,8 +4,9 @@ import { parseCardRequest } from "./card-request.js";
 import { jsonResponse, methodAllowed, methodNotAllowedResponse } from "./http.js";
 
 /**
- * 발행 카드의 cache 정책입니다. 브라우저·이미지 proxy는 5분, Vercel CDN은 1시간 동안 cache하고
- * 이후 하루 동안은 이전 카드를 응답하면서 background에서 다시 읽습니다. 하루 1회 갱신이라 purge 없이 TTL로만 운영합니다.
+ * 발행 카드의 cache 정책입니다. Vercel CDN은 1시간 동안 cache하고, 이후 하루 동안은 이전 사본을 한 번 응답하면서
+ * background에서 다시 읽습니다. `Cache-Control`은 stale 응답에도 그대로 전달되므로 브라우저·이미지 proxy가 5분 더 보관합니다.
+ * 하루 1회 갱신이라 purge 없이 TTL로만 운영합니다.
  */
 const PUBLISHED_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=300",
@@ -14,7 +15,7 @@ const PUBLISHED_CACHE_HEADERS = {
 
 /**
  * 정규 URL redirect의 cache 정책입니다. 대상은 요청 URL과 마스코트 registry로만 정해지므로 CDN에 하루 동안 둡니다.
- * registry가 바뀌는 배포 뒤의 CDN cache 무효화 여부는 HOST-13 staging에서 확인합니다.
+ * Vercel CDN cache key에는 deployment URL이 들어가므로 registry가 바뀐 배포는 이전 redirect 항목을 쓰지 않습니다.
  */
 const REDIRECT_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=300",
