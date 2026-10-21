@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import cron from "../api/cron.js";
 import health from "../api/health.js";
+import { ROUTING_PARAMS } from "../src/hosting/card-request.js";
 import { readHostingConfig } from "../src/hosting/environment.js";
 
 test("hosting config accepts the three Vercel environments without requiring secrets", () => {
@@ -91,10 +92,12 @@ test("Vercel routes and function resource declarations match the public contract
   };
   assert.equal(config.builds, undefined);
   assert.equal(config.outputDirectory, "public");
+  // 카드 route가 읽는 rewrite query 이름과 vercel.json이 같아야 합니다.
+  const { card, username } = ROUTING_PARAMS;
   assert.deepEqual(config.rewrites, [
     { source: "/healthz", destination: "/api/health" },
-    { source: "/:username/stats.svg", destination: "/api/card?card=stats&username=:username" },
-    { source: "/:username/languages.svg", destination: "/api/card?card=languages&username=:username" },
+    { source: "/:username/stats.svg", destination: `/api/card?${card}=stats&${username}=:username` },
+    { source: "/:username/languages.svg", destination: `/api/card?${card}=languages&${username}=:username` },
   ]);
   // Hobby Cron은 하루 1회만 허용되므로 매일 실행되는 UTC schedule 하나만 둡니다.
   assert.deepEqual(config.crons, [{ path: "/api/cron", schedule: "17 18 * * *" }]);
