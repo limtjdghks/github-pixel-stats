@@ -108,6 +108,7 @@ del([urlOrPathname], options);
 - `CDN-Cache-Control`은 Vercel을 포함한 CDN 동작을 지정합니다.
 - `Vercel-CDN-Cache-Control`은 Vercel CDN에만 적용되며 응답이 클라이언트에 전달되기 전에 소비됩니다.
 - [`x-vercel-cache`](https://vercel.com/docs/headers/response-headers#x-vercel-cache)는 Vercel CDN 상태를 나타냅니다. `HIT`, `MISS`, `STALE`, `PRERENDER`, `REVALIDATED`, `BYPASS`를 관측해 설정이 실제로 적용됐는지 확인합니다.
+- GPS-HOST-09는 카드 Function 응답에 `Cache-Control`(브라우저·이미지 proxy)과 `Vercel-CDN-Cache-Control`(Vercel CDN)을 함께 붙입니다. 다른 CDN에 전달되는 `CDN-Cache-Control`은 쓰지 않습니다. 값은 [`card-route.md`](./card-route.md)에 있습니다.
 
 ### Secret
 

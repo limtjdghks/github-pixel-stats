@@ -48,7 +48,7 @@
 
 - Vercel adapter는 모든 요청에 `@vercel/oidc`에서 얻은 OIDC token과 store ID를 명시합니다. token이 없으면 요청 전에 실패하며, 환경 변수의 `BLOB_READ_WRITE_TOKEN`으로 넘어가지 않습니다.
 - `BLOB_PRIVATE_STORE_ID`와 `BLOB_PUBLIC_STORE_ID`는 함께 설정해야 하며 같은 값을 허용하지 않습니다.
-- manifest와 checkpoint 조회는 `useCache: false`로 origin을 읽습니다.
+- manifest와 checkpoint 조회는 `useCache: false`로 origin을 읽습니다. 호출자가 `ReadOptions.immutable`로 내용 주소 불변 객체임을 밝힌 읽기(발행 카드)만 `useCache: true`로 Blob CDN cache를 거칩니다.
 - checkpoint lease guard는 ETag를 문자열로 비교하지 않고 lease 소유권만 확인합니다. Blob은 `get()` 응답 헤더와 `put()` 응답에서 ETag를 따로 받으므로 revision 일치는 조건부 쓰기에 맡깁니다.
 - 같은 store 금지 검사는 SDK와 같이 `store_` 접두사를 제거한 뒤 비교합니다.
 - 조건부 쓰기가 실패하면 객체를 다시 읽어 판정합니다. 방금 쓴 내용과 같으면 성공, 다른 내용이면 충돌, 객체가 없으면 원래 오류입니다. SDK가 기존 객체 생성 충돌을 별도 오류로 구분하지 않고, 응답이 유실된 PUT을 자동 재시도하면 실제로 반영된 쓰기도 충돌 오류로 끝나기 때문입니다.
