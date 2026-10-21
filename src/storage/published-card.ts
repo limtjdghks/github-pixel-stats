@@ -51,8 +51,7 @@ export async function readPublishedCard(
     if (release === null) continue;
     const pathname = cardPathname(manifest.username, release, card);
     if (pathname === undefined) continue;
-    // release 카드 pathname은 내용 주소라 바뀌지 않으므로 cache 사본을 읽어도 됩니다.
-    const object = await stores.publicStore.read(pathname, signal, { immutable: true });
+    const object = await stores.publicStore.read(pathname, signal);
     if (object !== null) return object.body;
   }
   throw new Error("Published card is missing.");

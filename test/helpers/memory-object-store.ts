@@ -3,7 +3,6 @@ import {
   assertObjectPrefix,
   type ObjectEntry,
   type ObjectStore,
-  type ReadOptions,
   type StoreAccess,
   type StoredObject,
   type WriteOptions,
@@ -24,8 +23,7 @@ export class MemoryObjectStore implements ObjectStore {
 
   constructor(readonly access: StoreAccess, private readonly now: () => Date = () => new Date()) {}
 
-  /** cache 계층이 없으므로 `options`와 무관하게 항상 최신 객체를 읽습니다. */
-  async read(pathname: string, signal?: AbortSignal, _options?: ReadOptions): Promise<StoredObject | null> {
+  async read(pathname: string, signal?: AbortSignal): Promise<StoredObject | null> {
     signal?.throwIfAborted();
     assertObjectPathname(pathname);
     const object = this.objects.get(pathname);
