@@ -11,6 +11,7 @@
 | `src/storage/manifest.ts` | manifest 구조, 검증, 다음 manifest·퇴역 release 계산, 보존 대상 계산 |
 | `src/storage/private-repository.ts` | manifest 조건부 교체, release state 저장, 발행된 state 조회 |
 | `src/storage/checkpoint-object-store.ts` | HOST-03 checkpoint 계약의 ETag 기반 구현 |
+| `src/storage/admissions.ts` | 등록 기록 형식·검증과 조건부 갱신 |
 | `src/storage/publish.ts` | 렌더링·검증부터 manifest 교체까지의 발행 흐름 |
 | `src/storage/cleanup.ts` | manifest가 참조하지 않는 객체 정리 |
 | `src/storage/filesystem-store.ts` | CLI·로컬 검증용 adapter |
@@ -20,6 +21,7 @@
 
 | store | pathname | 변경 방식 |
 | --- | --- | --- |
+| private | `admissions.json` | ETag 조건부 교체([`abuse-defense.md`](./abuse-defense.md)) |
 | private | `checkpoints/{user}.json` | ETag 조건부 교체 |
 | private | `manifests/{user}.json` | ETag 조건부 교체 |
 | private | `releases/{user}/{version}/snapshot.json`, `state.json` | 내용 주소, 불변 |

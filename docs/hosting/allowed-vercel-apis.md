@@ -122,6 +122,8 @@ del([urlOrPathname], options);
 
 [WAF Rate Limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)에 따라 rate-limit rule은 요청 출처별 window와 limit을 설정하고 후속 action을 선택합니다. `Log`는 요청을 차단하지 않으므로 먼저 영향과 정상 트래픽을 관측하는 단계에 사용합니다. 관측 결과를 검토한 뒤 기본 `429` 또는 `Deny` action을 적용합니다.
 
+GPS-HOST-10에서 다시 확인한 결과(2026-10-21) Hobby는 프로젝트당 rate-limit rule 1개, fixed window 10초~10분, counting key IP·JA4 digest이며 rule은 dashboard에서 만들어 production deployment에 publish합니다. counter는 region별입니다. 이 프로젝트의 초기 설정안은 [`abuse-defense.md`](./abuse-defense.md)에 있습니다.
+
 ## 금지 패턴
 
 - `waitUntil()`을 Function timeout 이후에도 살아 있는 durable queue 또는 자동 재시도 수단으로 취급하지 않습니다.

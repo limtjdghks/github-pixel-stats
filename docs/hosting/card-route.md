@@ -1,6 +1,6 @@
 # HOST-07·09 카드 route
 
-`/{username}/stats.svg`와 `/{username}/languages.svg`는 가입 없이 사용할 수 있는 카드 URL입니다. 카드 Function은 manifest가 가리키는 마지막 성공 카드를 public Blob에서 읽어 같은 URL로 응답합니다. 응답 경로는 어떤 저장소에도 쓰지 않으며, manifest가 없을 때만 background bootstrap이 checkpoint를 씁니다([`refresh.md`](./refresh.md)).
+`/{username}/stats.svg`와 `/{username}/languages.svg`는 가입 없이 사용할 수 있는 카드 URL입니다. 카드 Function은 manifest가 가리키는 마지막 성공 카드를 public Blob에서 읽어 같은 URL로 응답합니다. 응답 경로는 어떤 저장소에도 쓰지 않으며, manifest가 없을 때만 등록 기록을 읽고 background bootstrap이 등록 기록과 checkpoint를 씁니다([`refresh.md`](./refresh.md), [`abuse-defense.md`](./abuse-defense.md)).
 
 ## 구성 요소
 
@@ -10,6 +10,7 @@
 | `src/storage/published-card.ts` | manifest 조회와 release별 카드 객체 선택·읽기 |
 | `src/render/status-card.ts` | pending·상태 SVG 렌더링 |
 | `src/hosting/card-response.ts` | 응답 상태·헤더 결정 |
+| `src/hosting/admission-policy.ts` | 발행 전 사용자의 등록 상태 판정 |
 | `api/card.ts` | 환경 설정과 Blob adapter 연결 |
 
 ## 요청 해석
@@ -40,22 +41,26 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 | --- | --- | --- | --- |
 | current release 카드가 있음 | `ready` | 발행된 카드 | 발행 카드 |
 | current 카드 객체가 없고 previous 카드가 있음 | `ready` | previous 카드 | 발행 카드 |
-| manifest 없음(bootstrap 예약) | `pending` | pending SVG | `no-store` |
-| 사용자명 형식 오류 | `invalid-username` | 상태 SVG | `no-store` |
-| Blob store 미설정, manifest 손상, 카드 객체 없음, 읽기 실패·시간 초과 | `unavailable` | 상태 SVG | `no-store` |
+| manifest 없음, 등록됐거나 상한에 여유(bootstrap 예약) | `pending` | pending SVG | `no-store` |
+| manifest 없음, 수집 실패 표시 | `failed` | 상태 SVG | negative cache |
+| manifest 없음, 미등록이고 상한 도달 | `capacity` | 상태 SVG | 상한 도달 |
+| 사용자명 형식 오류 | `invalid-username` | 상태 SVG | URL로 결정 |
+| Blob store 미설정, manifest·등록 기록 손상, 카드 객체 없음, 읽기 실패·시간 초과 | `unavailable` | 상태 SVG | `no-store` |
 
 ## Cache
 
 | 응답 | `Cache-Control` | `Vercel-CDN-Cache-Control` |
 | --- | --- | --- |
 | 발행 카드 | `public, max-age=300` | `max-age=3600, stale-while-revalidate=86400` |
-| 정규 URL redirect | `public, max-age=300` | `max-age=86400` |
-| 상태 SVG | `no-store` | 없음 |
+| 정규 URL redirect, URL로 결정(`invalid-username`) | `public, max-age=300` | `max-age=86400` |
+| negative cache(`failed`) | `no-store` | `max-age=3600` |
+| 상한 도달(`capacity`) | `no-store` | `max-age=600` |
+| `pending`, `unavailable` | `no-store` | 없음 |
 
 - 갱신은 하루 1회라 purge 없이 TTL로만 운영합니다. 발행 후 이전 카드가 보일 수 있는 범위는 CDN fresh 1시간, 그 뒤 첫 요청의 stale 응답 1회(사본은 최대 25시간 전 것), 그리고 응답마다 그대로 전달되는 `Cache-Control`로 브라우저·이미지 proxy가 보관하는 5분입니다. 하루 한 번만 조회되는 경로는 매번 한 번 늦은 카드를 받을 수 있습니다. Vercel cache 시간은 best-effort라 드물게 요청되는 항목은 더 일찍 축출될 수 있습니다.
-- 카드 본문 항목은 정규 URL당 하나지만, 비정규 URL은 URL마다 308 응답이 하루 동안 cache됩니다. 저장소는 읽지 않으며, 임의 query로 cache를 우회하는 요청의 방어는 HOST-10 범위입니다.
+- 카드 본문 항목은 정규 URL당 하나지만, 비정규 URL은 URL마다 308 응답이 하루 동안 cache됩니다. 저장소는 읽지 않으며, 임의 query로 cache를 우회하는 대량 요청은 WAF rate limit으로 막습니다([`abuse-defense.md`](./abuse-defense.md)).
 - Vercel CDN cache key에는 deployment URL이 들어가므로 배포마다 cache가 분리됩니다([Purging Vercel CDN cache](https://vercel.com/docs/caching/cdn-cache/purge)). 배포 직후에는 모든 카드 요청이 Function과 manifest 읽기로 가고, 이전 deployment로 rollback하면 그 deployment에 남은 cache 항목이 다시 쓰일 수 있습니다.
-- 상태 SVG는 bootstrap 완료나 저장소 복구 직후 바로 바뀌어야 하므로 cache하지 않습니다. 반복 요청 방어는 HOST-10 negative cache 범위입니다.
+- `pending`·`unavailable`은 bootstrap 완료나 저장소 복구 직후 바로 바뀌어야 하므로 cache하지 않습니다. `failed`·`capacity`는 Vercel CDN에만 짧게 두고 브라우저·이미지 proxy에는 cache하지 않습니다. 발행된 사용자는 manifest를 먼저 읽으므로 발행 카드 항목이 이 상태로 바뀌지 않습니다. 근거는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다.
 - 카드 객체는 public store에 있어 원래 Blob CDN을 거쳐 읽습니다. SDK는 cache 우회(`useCache: false`)를 private store에만 적용하며, manifest는 private store라 계속 origin을 읽습니다. 카드 pathname은 내용 주소라 cache 사본도 같은 내용입니다.
 - 실제 CDN의 header 적용과 `x-vercel-cache`, Blob 장애 중 SWR 재검증 응답이 상태 SVG일 때 이전 항목이 유지되는지는 HOST-13 staging에서 확인합니다.
 
@@ -67,4 +72,4 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 
 ## 범위 밖
 
-manifest가 없는 사용자의 bootstrap은 [`refresh.md`](./refresh.md)에 있습니다. 신규 사용자 제한·negative cache·WAF는 HOST-10, cache hit율 등 운영 관측은 HOST-11입니다.
+manifest가 없는 사용자의 bootstrap은 [`refresh.md`](./refresh.md), 등록 상한·negative cache·WAF는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다. cache hit율 등 운영 관측은 HOST-11입니다.
