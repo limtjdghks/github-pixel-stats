@@ -74,14 +74,24 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 
 ### 삭제 요청
 
-1. 요청자가 해당 GitHub 계정의 소유자인지 확인합니다. 확인 방식은 출시 전 결정 게이트이며 아직 정하지 않았습니다.
-2. `delete <user>`로 지울 대상을 확인합니다.
-3. `delete <user> --yes`로 삭제합니다. 결과의 `remaining`이 비어 있지 않으면 삭제 도중 실행 중이던 수집·발행이 쓴 객체이므로 같은 명령을 다시 실행합니다.
-4. 요청자에게 다음을 안내합니다.
+요청자용 안내는 [`PRIVACY.md`](../../PRIVACY.md#removing-your-data)에 있습니다. 요청은 운영자 이메일로 받고, 해당 GitHub 계정이 public gist에 공개한 확인 토큰으로 소유권을 확인합니다. 보존 기간이나 절차를 바꾸면 두 문서를 함께 고칩니다.
+
+1. 제목이 `GitHub Pixel Stats removal: <username>`인 메일을 받으면 추측하기 어려운 일회용 토큰을 만들어 답장합니다. 예를 들면 `gps-remove-<username>-$(openssl rand -hex 8)`입니다. 토큰과 발급 시각을 그 메일 스레드에만 둡니다. 토큰은 7일 동안 유효합니다.
+2. 요청자가 보낸 gist 링크를 확인합니다.
+   - `gh api gists/<id> -q .owner.login`의 결과가 `<username>`과 같아야 합니다(대소문자 무시). URL 경로의 사용자명만 보고 판단하지 않습니다.
+   - `gh api gists/<id> -q '.files[].content'`에 발급한 토큰이 그대로 있어야 하고, 발급 후 7일이 지나지 않았어야 합니다. 맞지 않으면 새 토큰을 다시 발급합니다.
+   - 저장소 파일은 인정하지 않습니다. fork network의 commit은 상위 저장소 URL로도 보이고, collaborator는 계정 소유자가 아니어도 파일을 push할 수 있기 때문입니다. gist에는 collaborator가 없습니다.
+   - `gh api users/<username>`이 404이면 계정이 없는 것이므로 소유권 확인 없이 진행합니다. 계정에 로그인할 수 없다는 요청과 조직 계정(`.type`이 `Organization`, gist를 만들 수 없음)은 확인할 수 없으므로 처리하지 않습니다.
+3. `delete <user>`로 지울 대상을 확인합니다.
+4. `delete <user> --yes`로 삭제합니다. 결과의 `remaining`이 비어 있지 않으면 삭제 도중 실행 중이던 수집·발행이 쓴 객체이므로 같은 명령을 다시 실행합니다.
+5. 요청자에게 완료를 메일로 알리고 다음을 안내합니다. 확인용 gist는 이제 지워도 된다고 함께 알립니다.
    - Vercel CDN에 cache된 카드 응답은 최대 12시간(그 뒤 stale 응답 1회) 남을 수 있습니다.
    - README에서 카드 URL을 지우는 것은 요청자가 해야 합니다.
    - 지운 Blob 객체가 Blob CDN에서 사라지는 시간은 HOST-13에서 확인합니다.
-5. 다시 쓰고 싶다는 요청이 오면 `restore <user>`로 표시를 풉니다. 다음 카드 요청부터 신규 등록 상한 안에서 다시 수집됩니다.
+6. 요청 메일 스레드는 완료 후 30일 안에 지웁니다. 끝나지 않은 요청(토큰 만료, 답장 없음)은 마지막 메일 후 30일 안에 지웁니다(`PRIVACY.md`의 보존 기간).
+
+삭제 표시는 `admissions.json`에만 있습니다. 등록 기록 손상 복구로 이 파일을 지우면 삭제 표시도 사라지고, 삭제한 사용자의 카드 URL이 다시 요청될 때 재수집됩니다. `PRIVACY.md`가 재수집하지 않는다고 약속하므로 [`abuse-defense.md`](./abuse-defense.md#등록-기록-손상)의 절차대로 다시 표시해야 합니다.
+7. 다시 쓰고 싶다는 요청이 오면 같은 방식으로 소유권을 확인한 뒤 `restore <user>`로 표시를 풉니다. 다음 카드 요청부터 신규 등록 상한 안에서 다시 수집됩니다.
 
 ### rollback
 
@@ -109,7 +119,7 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 | 잘못된 카드 발행(renderer·데이터) | 특정 사용자 카드 이상 | 없음 | 원인 수정·배포 뒤 해당 사용자 `rollback`. 여러 사용자면 사용자별로 실행 |
 | 발행이 계속 실패 | `publishFailures` 반복, `status`의 `stuck` | 마지막 성공 카드 유지 | 위 "발행이 멈춘 사용자" 절차 |
 | manifest 손상 | 그 사용자 카드 `unavailable`, Cron에서 그 사용자 오류 | 없음. CLI `rollback`도 manifest를 읽지 못해 실패 | dashboard에서 그 manifest 객체를 지움. 사용자는 미발행 상태가 되어 checkpoint로 다시 수집·발행됨 |
-| 등록 기록 손상 | 미발행 사용자 모두 `unavailable`, bootstrap 중단 | fail-closed | [`abuse-defense.md`](./abuse-defense.md)의 등록 기록 손상 절차 |
+| 등록 기록 손상 | 미발행 사용자 모두 `unavailable`, bootstrap 중단 | fail-closed | [`abuse-defense.md`](./abuse-defense.md)의 등록 기록 손상 절차. 파일을 지우면 삭제 표시도 사라지므로 지우기 전에 삭제된 사용자명을 확인해 두고 다시 표시 |
 | 사용량 기록 손상 | 그날 Cron·bootstrap 수집 중단, `cron.usage_read_failed` | fail-closed. 날짜가 바뀌면 새 기록으로 회복 | 그날 안에 회복이 필요하면 그 날짜 객체를 고치거나 지움. 지우면 그날 예산 집계가 0부터 다시 시작돼 하루 예산을 넘을 수 있음 |
 
 - dashboard에서 Blob store를 열거나 객체를 지우는 것도 Advanced Operation입니다.
@@ -118,4 +128,3 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 ## 범위 밖
 
 - 실제 store에서의 CLI 인증, 지운 Blob 객체의 Blob CDN 잔존 시간, manifest 손상·rollback·삭제 복구 연습은 HOST-13 staging에서 합니다.
-- 삭제 요청자의 GitHub 계정 소유권 확인 방식은 출시 전 결정 게이트입니다.
