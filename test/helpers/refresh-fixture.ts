@@ -3,6 +3,7 @@ import { LinguistClassifier } from "../../src/data/linguist.js";
 import type { RefreshDependencies } from "../../src/hosting/refresh-job.js";
 import type { SearchCommit } from "../../src/model.js";
 import { ObjectCheckpointStore } from "../../src/storage/checkpoint-object-store.js";
+import { countingStore } from "../../src/storage/operation-count.js";
 import { loadPublishedState } from "../../src/storage/private-repository.js";
 import { MemoryObjectStore } from "./memory-object-store.js";
 
@@ -42,8 +43,10 @@ export function refreshFixture() {
       case "files": return { kind: "files", filenames: ["src/main.ts"], fileCount: 1, hasNext: false };
     }
   };
+  // 운영 구성처럼 갱신 의존성의 저장소만 작업을 셉니다. 테스트가 직접 읽는 `privateStore`·`publicStore`는 세지 않습니다.
+  const stores = { privateStore: countingStore(privateStore), publicStore: countingStore(publicStore) };
   const dependencies: RefreshDependencies = {
-    stores: { privateStore, publicStore },
+    stores,
     github: {
       async requestPage(request, signal) {
         signal.throwIfAborted();
@@ -51,8 +54,8 @@ export function refreshFixture() {
         return page(request);
       },
     },
-    checkpoints: new ObjectCheckpointStore(privateStore),
-    loadState: (username) => loadPublishedState(privateStore, username),
+    checkpoints: new ObjectCheckpointStore(stores.privateStore),
+    loadState: (username) => loadPublishedState(stores.privateStore, username),
     loadClassifier: () => classifierPromise,
     now,
     newId: () => `id-${++serial}`,

@@ -5,15 +5,17 @@ import { readPublishedCard, type CardStores } from "../storage/published-card.js
 import { admissionDecision, type AdmissionDecision } from "./admission-policy.js";
 import { parseCardRequest } from "./card-request.js";
 import { jsonResponse, methodAllowed, methodNotAllowedResponse } from "./http.js";
+import { logError, logEvent } from "./log.js";
 
 /**
- * 발행 카드의 cache 정책입니다. Vercel CDN은 1시간 동안 cache하고, 이후 하루 동안은 이전 사본을 한 번 응답하면서
+ * 발행 카드의 cache 정책입니다. Vercel CDN은 12시간 동안 cache하고, 이후 하루 동안은 이전 사본을 한 번 응답하면서
  * background에서 다시 읽습니다. `Cache-Control`은 stale 응답에도 그대로 전달되므로 브라우저·이미지 proxy가 5분 더 보관합니다.
- * 하루 1회 갱신이라 purge 없이 TTL로만 운영합니다.
+ * 하루 1회 갱신이라 purge 없이 TTL로만 운영합니다. CDN miss마다 Blob 읽기(Simple Operation)가 생기므로, freshness
+ * (24~48시간)를 크게 해치지 않는 범위에서 길게 둡니다.
  */
 const PUBLISHED_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=300",
-  "Vercel-CDN-Cache-Control": "max-age=3600, stale-while-revalidate=86400",
+  "Vercel-CDN-Cache-Control": "max-age=43200, stale-while-revalidate=86400",
 } as const;
 
 /**
@@ -62,8 +64,9 @@ const SVG_HEADERS = {
   "X-Content-Type-Options": "nosniff",
 } as const;
 
-/** 운영 관측용으로 응답의 상태를 `X-Card-Status`에 남깁니다. */
-function svgResponse(request: Request, svg: string, status: CardStatus | "ready"): Response {
+/** 운영 관측용으로 응답의 상태를 `X-Card-Status`와 `card.response` 로그에 남깁니다. CDN hit은 Function에 오지 않아 남지 않습니다. */
+function svgResponse(request: Request, svg: string, status: CardStatus | "ready", card: string): Response {
+  logEvent("card.response", { card, status });
   return new Response(request.method === "HEAD" ? null : svg, {
     status: 200,
     headers: {
@@ -75,7 +78,8 @@ function svgResponse(request: Request, svg: string, status: CardStatus | "ready"
 }
 
 /** 정규 카드 경로로 보냅니다. Function을 받는 host와 무관하도록 `Location`은 상대 경로입니다. */
-function canonicalRedirect(path: string): Response {
+function canonicalRedirect(path: string, card: string): Response {
+  logEvent("card.response", { card, status: "redirect" });
   return new Response(null, { status: 308, headers: { ...URL_DETERMINED_CACHE_HEADERS, Location: path } });
 }
 
@@ -126,26 +130,26 @@ export async function cardResponse(
     return jsonResponse(request, 404, { status: "not_found" });
   }
   const { card, username, canonicalPath } = parsed;
-  if (canonicalPath !== undefined) return canonicalRedirect(canonicalPath);
-  const status = (value: CardStatus) => svgResponse(request, renderStatusCard(value, card.kind), value);
+  if (canonicalPath !== undefined) return canonicalRedirect(canonicalPath, card.kind);
+  const status = (value: CardStatus) => svgResponse(request, renderStatusCard(value, card.kind), value, card.kind);
   if (username === null) return status("invalid-username");
   if (stores === undefined) return status("unavailable");
   let unpublished: CardStatus;
   try {
     const signal = AbortSignal.timeout(timeoutMs);
     const svg = await withinBudget(readPublishedCard(stores, username, card, signal), signal);
-    if (svg !== null) return svgResponse(request, svg, "ready");
+    if (svg !== null) return svgResponse(request, svg, "ready", card.kind);
     const { admissions } = await withinBudget(readAdmissions(stores.privateStore, signal), signal);
     unpublished = UNPUBLISHED_STATUS[admissionDecision(admissions, userKey(username), now())];
   } catch (error) {
-    console.error("Card read failed:", error instanceof Error ? error.message : "unknown error");
+    logError("card.read_failed", error);
     return status("unavailable");
   }
   if (unpublished !== "pending") return status(unpublished);
   try {
     onPending?.(username);
   } catch (error) {
-    console.error("Pending hook failed:", error instanceof Error ? error.message : "unknown error");
+    logError("card.pending_hook_failed", error);
   }
   return status("pending");
 }

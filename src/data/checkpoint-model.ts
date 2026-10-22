@@ -70,6 +70,8 @@ export interface BatchOptions {
   restartReadyUntil?: Date;
   /** false이면 `failed` checkpoint를 재시작하지 않고 GitHub 요청 없이 `failed`를 반환합니다. 기본값은 재시작입니다. */
   resumeFailed?: boolean;
+  /** 수집 중 checkpoint를 저장하는 최소 간격입니다. 기본값은 `CHECKPOINT_SAVE_INTERVAL_MS`입니다. */
+  checkpointIntervalMs?: number;
 }
 
 export interface BatchDependencies extends Pick<CollectionDependencies, "loadState" | "loadClassifier" | "now"> {

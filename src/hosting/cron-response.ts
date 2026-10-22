@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { runCron, type CronLimits } from "./cron-run.js";
 import { jsonResponse } from "./http.js";
+import { logError, logEvent } from "./log.js";
 import type { RefreshDependencies } from "./refresh-job.js";
 
 export interface CronConfig {
@@ -18,7 +19,7 @@ function authorized(request: Request, secret: string): boolean {
 /**
  * Vercel Cron 요청을 인증하고 갱신 루프를 실행합니다.
  * `CRON_SECRET`이나 갱신 의존성이 없으면 실행하지 않고 503으로 응답합니다(fail-closed).
- * 응답 본문에는 집계 수치만 담으며 사용자명이나 오류 메시지를 넣지 않습니다.
+ * 응답 본문과 `cron.completed` 로그에는 집계 수치만 담으며 사용자명이나 오류 메시지를 넣지 않습니다.
  * `limits`는 인증을 통과한 뒤 호출하므로 실행 시점의 deadline을 계산할 수 있습니다.
  */
 export async function cronResponse(request: Request, config: CronConfig, limits: () => CronLimits): Promise<Response> {
@@ -36,9 +37,17 @@ export async function cronResponse(request: Request, config: CronConfig, limits:
   }
   try {
     const summary = await runCron(limits(), config.dependencies);
+    const { blob, ...counts } = summary;
+    logEvent("cron.completed", {
+      ...counts,
+      blobAdvanced: blob.operations.advanced,
+      blobSimple: blob.operations.simple,
+      dailyAdvanced: blob.dailyAdvanced,
+      dailyBudget: blob.dailyBudget,
+    });
     return jsonResponse(request, 200, { status: "ok", ...summary });
   } catch (error) {
-    console.error("Cron run failed:", error instanceof Error ? error.message : "unknown error");
+    logError("cron.failed", error);
     return jsonResponse(request, 500, { status: "error" });
   }
 }
