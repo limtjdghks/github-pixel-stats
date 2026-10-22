@@ -1,0 +1,58 @@
+name: CI
+
+# 외부 fork PR도 같은 검사를 받아야 하므로 Secret·쓰기 권한이 필요한 단계를 두지 않습니다.
+# pull_request_target으로 바꾸면 fork 코드가 base 저장소 권한으로 실행되므로 사용하지 마세요.
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build fixture cards
+        run: npm run build
+
+      # vercel build는 .vercel/project.json의 설정만 있으면 Vercel 인증 없이 실행됩니다.
+      # 빌드 설정은 vercel.json이 우선하므로 여기에는 빈 프로젝트 정보만 둡니다.
+      - name: Prepare local Vercel project settings
+        run: |
+          mkdir -p .vercel
+          echo '{"projectId":"ci","orgId":"ci","settings":{"framework":null}}' > .vercel/project.json
+
+      - name: Build Vercel output
+        run: npx --yes vercel@63.1.0 build --yes
+
+      - name: Validate Vercel output
+        run: npm run validate:vercel-output

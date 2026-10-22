@@ -8,6 +8,7 @@
 - `npm run build:cards`: 기존 개인용 카드 수집·검증 명령이며 `GH_STATS_TOKEN`과 사용자명이 필요합니다.
 - `vercel build`: 연결된 Vercel 프로젝트의 Preview 설정으로 Function 산출물을 로컬 생성합니다. 각 `.func/.vc-config.json`의 `filePathMap`에서 카드와 Cron Function 모두에 `assets/fonts/NeoDunggeunmoPro.woff2`와 `data/languages.yml`이 연결됐는지, 원본 파일이 있는지 확인합니다.
 - Vercel의 정적 출력은 `public/`만 사용합니다. `.vercel/output/static/`에 소스, fixture, `data/languages.yml`이 없는지도 확인합니다.
+- `npm run validate:vercel-output`: 위 두 확인과 Function 생성·Cron 설정을 `vercel.json`과 비교해 자동 검사합니다. PR CI가 Vercel 인증 없이 `vercel build` 뒤 실행하며 절차는 [`ci.md`](./ci.md)에 있습니다.
 
 ## 환경
 
