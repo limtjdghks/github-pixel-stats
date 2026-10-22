@@ -3,11 +3,13 @@ import test from "node:test";
 import card from "../api/card.js";
 import { LANGUAGES_CARD, STATS_CARD } from "../src/config.js";
 import { LinguistClassifier } from "../src/data/linguist.js";
+import { NEW_USER_LIMIT, NEW_USER_WINDOW_MS, admitUser, markAdmissionFailures } from "../src/hosting/admission-policy.js";
 import { canonicalCardPath } from "../src/hosting/card-request.js";
 import { cardResponse } from "../src/hosting/card-response.js";
 import type { CollectionResult } from "../src/model.js";
 import { DEFAULT_MASCOT_ID, type MascotId } from "../src/render/index.js";
-import { manifestPathname, releasePathnames } from "../src/storage/pathnames.js";
+import { updateAdmissions } from "../src/storage/admissions.js";
+import { ADMISSIONS_PATHNAME, manifestPathname, releasePathnames } from "../src/storage/pathnames.js";
 import { publishRelease } from "../src/storage/publish.js";
 import { selectReleaseMascot } from "../src/storage/published-card.js";
 import { assertSvg } from "../src/validation/output.js";
@@ -282,6 +284,8 @@ test("invalid usernames receive the same status card without reflecting the inpu
   for (const path of ["/bad--name/stats.svg", "/%3Cscript%3E/stats.svg", "/api/card?__card=stats", "/api/card?__card=stats&__username=-x"]) {
     const response = await cardResponse(get(path), stores);
     assert.equal(response.headers.get("X-Card-Status"), "invalid-username", path);
+    assert.equal(response.headers.get("Cache-Control"), "public, max-age=300", path);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=86400", path);
     const svg = await response.text();
     assertSvg(svg, path, STATS_CARD.width, STATS_CARD.height);
     assert.equal(svg.includes("bad--name") || svg.includes("script"), false, path);
@@ -362,4 +366,100 @@ test("card function without Blob store configuration answers without external re
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("unpublished users receive a status from the admission record without any write", async () => {
+  const now = new Date("2026-10-01T00:00:00.000Z");
+  const privateStore = new MemoryObjectStore("private");
+  const publicStore = new MemoryObjectStore("public");
+  await updateAdmissions(privateStore, (current) => {
+    let next = admitUser(current, "ghost", now)!;
+    next = markAdmissionFailures(next, ["ghost"], now)!;
+    for (let index = 1; index < NEW_USER_LIMIT; index += 1) next = admitUser(next, `user${index}`, now)!;
+    return next;
+  });
+  forbidWrites(privateStore, publicStore);
+  const stores = { privateStore, publicStore };
+  const calls: string[] = [];
+  const options = { now: () => now, onPending: (username: string) => { calls.push(username); } };
+  const cases = [
+    ["/user1/stats.svg", "pending", "no-store", null, /PREPARING/, STATS_CARD],
+    ["/ghost/stats.svg", "failed", "no-store", "max-age=3600", /NO STATS/, STATS_CARD],
+    ["/ghost/languages.svg", "failed", "no-store", "max-age=3600", /NO STATS/, LANGUAGES_CARD],
+    ["/new-user/stats.svg", "capacity", "no-store", "max-age=600", /AT CAPACITY/, STATS_CARD],
+    ["/new-user/languages.svg", "capacity", "no-store", "max-age=600", /AT CAPACITY/, LANGUAGES_CARD],
+  ] as const;
+  for (const [path, status, cacheControl, cdn, text, size] of cases) {
+    const response = await cardResponse(get(path), stores, options);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("X-Card-Status"), status, path);
+    assert.equal(response.headers.get("Cache-Control"), cacheControl, path);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), cdn, path);
+    const svg = await response.text();
+    assertSvg(svg, path, size.width, size.height);
+    assert.match(svg, text, path);
+  }
+  assert.deepEqual(calls, ["user1"]);
+
+  for (const path of ["/ghost/stats.svg", "/new-user/stats.svg"]) {
+    const head = await cardResponse(get(path, { method: "HEAD" }), stores, options);
+    assert.equal(head.status, 200, path);
+    assert.notEqual(head.headers.get("Vercel-CDN-Cache-Control"), null, path);
+    assert.equal(await head.text(), "", path);
+  }
+  assert.deepEqual(calls, ["user1"]);
+
+  // 24시간이 지나 신규 등록 상한에 여유가 생기면 새 사용자도 pending으로 bootstrap을 예약합니다.
+  const later = new Date(now.getTime() + NEW_USER_WINDOW_MS);
+  const response = await cardResponse(get("/new-user/stats.svg"), stores, { ...options, now: () => later });
+  assert.equal(response.headers.get("X-Card-Status"), "pending");
+  assert.deepEqual(calls, ["user1", "new-user"]);
+});
+
+test("a corrupted admission record returns an unavailable card without scheduling bootstrap", async () => {
+  const privateStore = new MemoryObjectStore("private");
+  const publicStore = new MemoryObjectStore("public");
+  privateStore.objects.set(ADMISSIONS_PATHNAME, {
+    body: "{", etag: '"x"', uploadedAt: new Date(), contentType: "application/json", cacheControlMaxAge: 60,
+  });
+  const originalError = console.error;
+  console.error = () => {};
+  const calls: string[] = [];
+  try {
+    const response = await cardResponse(get("/new-user/stats.svg"), { privateStore, publicStore }, {
+      onPending: (username) => { calls.push(username); },
+    });
+    assert.equal(response.headers.get("X-Card-Status"), "unavailable");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.deepEqual(calls, []);
+  } finally {
+    console.error = originalError;
+  }
+});
+
+test("published users receive their card regardless of the admission record", async () => {
+  const now = new Date("2026-10-01T00:00:00.000Z");
+  const failedMark = await publishedStores();
+  await updateAdmissions(failedMark.privateStore, (current) => markAdmissionFailures(admitUser(current, "fixture-alpha", now)!, ["fixture-alpha"], now));
+  const full = await publishedStores();
+  await updateAdmissions(full.privateStore, (current) => {
+    let next = current;
+    for (let index = 0; index < NEW_USER_LIMIT; index += 1) next = admitUser(next, `user${index}`, now)!;
+    return next;
+  });
+  const corrupted = await publishedStores();
+  corrupted.privateStore.objects.set(ADMISSIONS_PATHNAME, {
+    body: "{", etag: '"x"', uploadedAt: now, contentType: "application/json", cacheControlMaxAge: 60,
+  });
+  const calls: string[] = [];
+  for (const [label, stores] of [["failed mark", failedMark], ["capacity", full], ["corrupted", corrupted]] as const) {
+    forbidWrites(stores.privateStore, stores.publicStore);
+    const response = await cardResponse(get("/fixture-alpha/stats.svg"), stores, {
+      now: () => now,
+      onPending: (username) => { calls.push(username); },
+    });
+    assert.equal(response.headers.get("X-Card-Status"), "ready", label);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=3600, stale-while-revalidate=86400", label);
+  }
+  assert.deepEqual(calls, []);
 });

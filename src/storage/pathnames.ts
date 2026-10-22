@@ -5,14 +5,15 @@ import { parseUsername } from "../username.js";
 
 /**
  * hosted 저장소 pathname의 SSOT입니다.
- * private store: `checkpoints/`, `manifests/`, `releases/`
+ * private store: `admissions.json`, `checkpoints/`, `manifests/`, `releases/`
  * public store: `cards/`
  * raw username이나 query 값은 반드시 이 모듈을 거쳐 pathname이 됩니다.
  */
 
 const RELEASE_VERSION = /^\d{8}-\d{6}-[0-9a-f]{16}$/;
 
-function userKey(username: string): string {
+/** 사용자명을 저장소 key(소문자)로 바꿉니다. 사용자명 규칙에 맞지 않으면 던집니다. */
+export function userKey(username: string): string {
   return parseUsername(username).toLowerCase();
 }
 
@@ -39,6 +40,8 @@ export function createReleaseVersion(snapshot: StatsSnapshot, state: CollectorSt
   return `${stamp}-${hash}`;
 }
 
+/** 전체 사용자의 등록 기록을 담는 단일 객체입니다. */
+export const ADMISSIONS_PATHNAME = "admissions.json";
 export const CHECKPOINT_PREFIX = "checkpoints/";
 export const MANIFEST_PREFIX = "manifests/";
 

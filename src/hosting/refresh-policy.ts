@@ -13,11 +13,14 @@ export const REFRESH_INTERVAL_MS = 20 * 60 * 60 * 1000;
  * 그다음 manifest가 없는(bootstrap이 끝나지 않은) 사용자를 반환합니다.
  * 미발행 사용자를 뒤에 두는 이유는 카드 URL만으로 생긴, 실패를 반복하는 checkpoint가
  * 예산을 먼저 써서 이미 카드를 쓰는 사용자의 갱신을 막지 않게 하기 위해서입니다.
+ * 미발행 사용자 중 `deferred`에 든 사용자(수집 실패 표시)는 맨 뒤에 둡니다. 쌓인 실패 사용자가
+ * 정상 등록된 미발행 사용자의 순서를 밀지 않게 하기 위해서입니다.
  */
 export function selectDueUsers(
   checkpoints: readonly ObjectEntry[],
   manifests: readonly ObjectEntry[],
   now: Date,
+  deferred: ReadonlySet<string> = new Set(),
 ): string[] {
   const published = new Map<string, number>();
   for (const entry of manifests) {
@@ -34,5 +37,10 @@ export function selectDueUsers(
     .filter(([, uploadedAt]) => uploadedAt <= cutoff)
     .sort(([leftKey, left], [rightKey, right]) => left - right || leftKey.localeCompare(rightKey))
     .map(([key]) => key);
-  return [...due, ...[...pending].sort()];
+  const unpublished = [...pending].sort();
+  return [
+    ...due,
+    ...unpublished.filter((key) => !deferred.has(key)),
+    ...unpublished.filter((key) => deferred.has(key)),
+  ];
 }

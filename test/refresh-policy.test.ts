@@ -32,3 +32,13 @@ test("pathnames outside the user key format are ignored", () => {
   assert.equal(userKeyFromPathname(CHECKPOINT_PREFIX, "manifests/user.json"), null);
   assert.equal(userKeyFromPathname(MANIFEST_PREFIX, "manifests/fixture-alpha.json"), "fixture-alpha");
 });
+
+test("deferred unpublished users come after the other unpublished users and never before published users", () => {
+  const due = selectDueUsers(
+    [entry("checkpoints/alpha.json"), entry("checkpoints/beta.json"), entry("checkpoints/gamma.json"), entry("checkpoints/older.json")],
+    [entry("manifests/older.json", at(-REFRESH_INTERVAL_MS))],
+    NOW,
+    new Set(["alpha", "older"]),
+  );
+  assert.deepEqual(due, ["older", "beta", "gamma", "alpha"]);
+});
