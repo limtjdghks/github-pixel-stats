@@ -25,6 +25,7 @@
 | private | `checkpoints/{user}.json` | ETag 조건부 교체 |
 | private | `manifests/{user}.json` | ETag 조건부 교체 |
 | private | `releases/{user}/{version}/snapshot.json`, `state.json` | 내용 주소, 불변 |
+| private | `usage/{YYYY-MM-DD}.json` | ETag 조건부 교체, 90일 보존([`operations.md`](./operations.md)) |
 | public | `cards/{user}/{version}/languages.svg`, `stats-{mascot}.svg` | 내용 주소, 불변 |
 
 `{user}`는 검증한 GitHub 사용자명의 소문자입니다. `{version}`은 `YYYYMMDD-HHMMSS-{hash16}` 형식이며 snapshot 생성 시각과 snapshot·state·렌더링된 카드 내용 hash로 만듭니다. 같은 수집 결과와 같은 renderer는 같은 버전이 되므로 재시도한 발행은 같은 pathname에 같은 내용을 씁니다. renderer가 바뀌면 버전도 바뀌어 이미 cache된 카드 pathname을 덮지 않습니다. 이때 같은 snapshot의 재발행은 생성 시각이 같아 `stale`이 되므로 새 renderer 결과는 다음 수집부터 반영됩니다.

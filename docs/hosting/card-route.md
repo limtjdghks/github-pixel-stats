@@ -51,13 +51,14 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 
 | 응답 | `Cache-Control` | `Vercel-CDN-Cache-Control` |
 | --- | --- | --- |
-| 발행 카드 | `public, max-age=300` | `max-age=3600, stale-while-revalidate=86400` |
+| 발행 카드 | `public, max-age=300` | `max-age=43200, stale-while-revalidate=86400` |
 | 정규 URL redirect, URL로 결정(`invalid-username`) | `public, max-age=300` | `max-age=86400` |
 | negative cache(`failed`) | `no-store` | `max-age=3600` |
 | 상한 도달(`capacity`) | `no-store` | `max-age=600` |
 | `pending`, `unavailable` | `no-store` | 없음 |
 
-- 갱신은 하루 1회라 purge 없이 TTL로만 운영합니다. 발행 후 이전 카드가 보일 수 있는 범위는 CDN fresh 1시간, 그 뒤 첫 요청의 stale 응답 1회(사본은 최대 25시간 전 것), 그리고 응답마다 그대로 전달되는 `Cache-Control`로 브라우저·이미지 proxy가 보관하는 5분입니다. 하루 한 번만 조회되는 경로는 매번 한 번 늦은 카드를 받을 수 있습니다. Vercel cache 시간은 best-effort라 드물게 요청되는 항목은 더 일찍 축출될 수 있습니다.
+- 갱신은 하루 1회라 purge 없이 TTL로만 운영합니다. 발행 후 이전 카드가 보일 수 있는 범위는 CDN fresh 12시간, 그 뒤 첫 요청의 stale 응답 1회(사본은 최대 36시간 전 것), 그리고 응답마다 그대로 전달되는 `Cache-Control`로 브라우저·이미지 proxy가 보관하는 5분입니다. 하루 한 번만 조회되는 경로는 매번 한 번 늦은 카드를 받을 수 있습니다. Vercel cache 시간은 best-effort라 드물게 요청되는 항목은 더 일찍 축출될 수 있습니다.
+- fresh 기간을 12시간으로 둔 이유는 CDN miss마다 manifest·카드 Blob 읽기(Simple Operation) 2회가 생기기 때문입니다. 카드 URL마다 miss가 하루 약 2회로 줄며, freshness(24~48시간)에 더해지는 지연은 최대 12시간입니다([`operations.md`](./operations.md)).
 - 카드 본문 항목은 정규 URL당 하나지만, 비정규 URL은 URL마다 308 응답이 하루 동안 cache됩니다. 저장소는 읽지 않으며, 임의 query로 cache를 우회하는 대량 요청은 WAF rate limit으로 막습니다([`abuse-defense.md`](./abuse-defense.md)).
 - Vercel CDN cache key에는 deployment URL이 들어가므로 배포마다 cache가 분리됩니다([Purging Vercel CDN cache](https://vercel.com/docs/caching/cdn-cache/purge)). 배포 직후에는 모든 카드 요청이 Function과 manifest 읽기로 가고, 이전 deployment로 rollback하면 그 deployment에 남은 cache 항목이 다시 쓰일 수 있습니다.
 - `pending`·`unavailable`은 bootstrap 완료나 저장소 복구 직후 바로 바뀌어야 하므로 cache하지 않습니다. `failed`·`capacity`는 Vercel CDN에만 짧게 두고 브라우저·이미지 proxy에는 cache하지 않습니다. 발행된 사용자는 manifest를 먼저 읽으므로 발행 카드 항목이 이 상태로 바뀌지 않습니다. 근거는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다.
@@ -72,4 +73,4 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 
 ## 범위 밖
 
-manifest가 없는 사용자의 bootstrap은 [`refresh.md`](./refresh.md), 등록 상한·negative cache·WAF는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다. cache hit율 등 운영 관측은 HOST-11입니다.
+manifest가 없는 사용자의 bootstrap은 [`refresh.md`](./refresh.md), 등록 상한·negative cache·WAF는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다. Blob 사용량 예산과 운영 로그는 [`operations.md`](./operations.md)에 있습니다.
