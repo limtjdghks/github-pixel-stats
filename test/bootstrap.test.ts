@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GitHubRequestError } from "../src/data/github-pages.js";
+import { NEW_USER_LIMIT, admitUser } from "../src/hosting/admission-policy.js";
 import { BOOTSTRAP_MAX_REQUESTS, bootstrapUser } from "../src/hosting/bootstrap.js";
 import { boundedDeadline } from "../src/hosting/invocation-deadline.js";
+import { runRefreshJob } from "../src/hosting/refresh-job.js";
+import { readAdmissions, updateAdmissions } from "../src/storage/admissions.js";
+import { CHECKPOINT_PREFIX } from "../src/storage/pathnames.js";
 import { readManifest } from "../src/storage/private-repository.js";
 import { REFRESH_NOW, refreshFixture } from "./helpers/refresh-fixture.js";
 
@@ -40,6 +44,7 @@ test("bootstrap does not retry failed users and swallows storage errors", async 
   try {
     await bootstrapUser("ghost", deadline(REFRESH_NOW), f.dependencies);
     const count = f.calls.length;
+    assert.equal((await readAdmissions(f.privateStore)).admissions.users.ghost?.failedAt, new Date(REFRESH_NOW).toISOString());
     await bootstrapUser("ghost", deadline(REFRESH_NOW), f.dependencies);
     assert.equal(f.calls.length, count);
 
@@ -74,4 +79,65 @@ test("a transient GitHub failure or rate limit during bootstrap resumes on a lat
     await bootstrapUser("fixture-user", deadline(f.clock.now), f.dependencies);
     assert.ok(await readManifest(f.privateStore, "fixture-user"), error.message);
   }
+});
+
+test("bootstrap registers new users and stops without GitHub requests once the new-user limit is reached", async () => {
+  const f = refreshFixture();
+  const now = new Date(REFRESH_NOW);
+  await updateAdmissions(f.privateStore, (current) => {
+    let next = current;
+    for (let index = 0; index < NEW_USER_LIMIT; index += 1) next = admitUser(next, `user${index}`, now)!;
+    return next;
+  });
+  await bootstrapUser("late-user", deadline(REFRESH_NOW), f.dependencies);
+  assert.equal(f.calls.length, 0);
+  assert.deepEqual(await f.privateStore.list(CHECKPOINT_PREFIX), []);
+  assert.equal(Object.hasOwn((await readAdmissions(f.privateStore)).admissions.users, "late-user"), false);
+
+  // 이미 등록된 사용자는 상한과 관계없이 수집합니다.
+  await bootstrapUser("User0", deadline(REFRESH_NOW), f.dependencies);
+  assert.ok(await readManifest(f.privateStore, "user0"));
+});
+
+test("concurrent bootstraps competing for the last new-user slot register exactly one user", async () => {
+  const f = refreshFixture();
+  const now = new Date(REFRESH_NOW);
+  await updateAdmissions(f.privateStore, (current) => {
+    let next = current;
+    for (let index = 0; index < NEW_USER_LIMIT - 1; index += 1) next = admitUser(next, `user${index}`, now)!;
+    return next;
+  });
+  // 경쟁자 수를 조건부 쓰기 재시도 횟수보다 적게 둬, 재시도가 바닥나서가 아니라 상한 판정으로 멈추는지 확인합니다.
+  const write = f.privateStore.write.bind(f.privateStore);
+  let conflicts = 0;
+  f.privateStore.write = async (...args) => {
+    const etag = await write(...args);
+    if (etag === null) conflicts += 1;
+    return etag;
+  };
+  const usernames = ["crowd0", "crowd1", "crowd2"];
+  await Promise.all(usernames.map((username) => bootstrapUser(username, deadline(REFRESH_NOW), f.dependencies)));
+  assert.ok(conflicts > 0, "bootstraps must actually race on the admission record");
+  const users = (await readAdmissions(f.privateStore)).admissions.users;
+  const admitted = usernames.filter((username) => Object.hasOwn(users, username));
+  assert.equal(admitted.length, 1);
+  assert.equal(Object.keys(users).length, NEW_USER_LIMIT);
+  const collected = new Set(f.calls.filter((page) => page.kind === "profile").map((page) => page.username));
+  assert.deepEqual([...collected], admitted);
+});
+
+test("bootstrap marks a registered user whose checkpoint already failed without GitHub requests", async () => {
+  const f = refreshFixture();
+  f.missing.add("ghost");
+  const now = new Date(REFRESH_NOW);
+  await updateAdmissions(f.privateStore, (current) => admitUser(current, "ghost", now));
+  // Cron처럼 bootstrap 밖에서 수집이 실패해 등록 기록에는 표시가 없는 상태를 만듭니다.
+  const failed = await runRefreshJob("ghost", { deadline: deadline(REFRESH_NOW), maxRequests: 10 }, f.dependencies);
+  assert.equal(failed.status, "failed");
+  const calls = f.calls.length;
+  assert.equal((await readAdmissions(f.privateStore)).admissions.users.ghost?.failedAt, null);
+
+  await bootstrapUser("ghost", deadline(REFRESH_NOW), f.dependencies);
+  assert.equal(f.calls.length, calls);
+  assert.equal((await readAdmissions(f.privateStore)).admissions.users.ghost?.failedAt, now.toISOString());
 });

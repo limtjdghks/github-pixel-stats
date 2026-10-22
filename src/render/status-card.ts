@@ -2,12 +2,14 @@ import { LANGUAGES_CARD, STATS_CARD } from "../config.js";
 import { renderFrame, renderFrameDefs } from "./frame.js";
 import { escapeXml, renderFontStyles } from "./shared.js";
 
-export type CardStatus = "pending" | "invalid-username" | "unavailable";
+export type CardStatus = "pending" | "invalid-username" | "unavailable" | "failed" | "capacity";
 
 const STATUS_TEXT: Record<CardStatus, { heading: string; lines: [string, string] }> = {
   pending: { heading: "PREPARING", lines: ["Stats are not ready yet.", "Check back after an update."] },
   "invalid-username": { heading: "INVALID USER", lines: ["Use a GitHub username", "in the card URL."] },
   unavailable: { heading: "UNAVAILABLE", lines: ["Stats are temporarily", "unavailable."] },
+  failed: { heading: "NO STATS", lines: ["Stats could not be built", "for this GitHub user."] },
+  capacity: { heading: "AT CAPACITY", lines: ["New cards are paused.", "Please try again later."] },
 };
 
 /**

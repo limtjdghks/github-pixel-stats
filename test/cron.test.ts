@@ -5,6 +5,11 @@ import { CRON_MIN_USER_BUDGET_MS, runCron, type CronLimits } from "../src/hostin
 import { runRefreshJob } from "../src/hosting/refresh-job.js";
 import { REFRESH_INTERVAL_MS } from "../src/hosting/refresh-policy.js";
 import { GitHubRequestError } from "../src/data/github-pages.js";
+import { bootstrapUser } from "../src/hosting/bootstrap.js";
+import { cardResponse } from "../src/hosting/card-response.js";
+import { admitUser, markAdmissionFailures } from "../src/hosting/admission-policy.js";
+import { readAdmissions, updateAdmissions } from "../src/storage/admissions.js";
+import { ADMISSIONS_PATHNAME } from "../src/storage/pathnames.js";
 import { readManifest } from "../src/storage/private-repository.js";
 import { REFRESH_NOW, refreshFixture } from "./helpers/refresh-fixture.js";
 
@@ -177,4 +182,116 @@ test("a listing failure becomes a 500 without leaking the error", async () => {
   const response = await cronResponse(cronRequest(`Bearer ${SECRET}`), { secret: SECRET, dependencies: f.dependencies }, () => limits(f.clock.now));
   assert.equal(response.status, 500);
   assert.deepEqual(await response.json(), { status: "error" });
+});
+
+/** 등록 기록에 사용자를 등록하고, `failed`에 든 사용자에는 실패를 표시합니다. */
+async function admit(f: ReturnType<typeof refreshFixture>, usernames: string[], failed: string[] = []): Promise<void> {
+  const now = new Date(f.clock.now);
+  await updateAdmissions(f.privateStore, (current) => {
+    let next = current;
+    for (const username of usernames) next = admitUser(next, username, now) ?? next;
+    return markAdmissionFailures(next, failed, now) ?? next;
+  });
+}
+
+async function failedAt(f: ReturnType<typeof refreshFixture>, username: string): Promise<string | null | undefined> {
+  return (await readAdmissions(f.privateStore)).admissions.users[username]?.failedAt;
+}
+
+test("cron clears the failure mark only for the failed user it publishes", async () => {
+  const f = refreshFixture();
+  f.missing.add("ghost");
+  f.missing.add("phantom");
+  await bootstrapUser("ghost", new Date(f.clock.now + 20_000), f.dependencies);
+  await bootstrapUser("phantom", new Date(f.clock.now + 20_000), f.dependencies);
+  const calls: string[] = [];
+  const card = (username: string) => cardResponse(new Request(`https://example.test/${username}/stats.svg`), f.dependencies.stores, {
+    now: f.dependencies.now,
+    onPending: (user) => { calls.push(user); },
+  });
+  assert.equal((await card("ghost")).headers.get("X-Card-Status"), "failed");
+
+  f.missing.delete("ghost");
+  f.clock.now += 60_000;
+  const summary = await runCron(limits(f.clock.now), f.dependencies);
+  assert.equal(summary.published, 1);
+  assert.equal(summary.errors, 0);
+  assert.equal(await failedAt(f, "ghost"), null);
+  assert.notEqual(await failedAt(f, "phantom"), null);
+  assert.equal((await card("ghost")).headers.get("X-Card-Status"), "ready");
+  assert.equal((await card("phantom")).headers.get("X-Card-Status"), "failed");
+  assert.deepEqual(calls, []);
+});
+
+test("cron marks registered unpublished users whose collection fails during the run", async () => {
+  const f = refreshFixture();
+  await admit(f, ["ghost"]);
+  // bootstrap이 GitHub 요청 전에 멈춰, 존재하지 않는 사용자의 실패를 Cron이 처음 확인하는 상황입니다.
+  await register(f, "ghost");
+  f.missing.add("ghost");
+  const summary = await runCron(limits(f.clock.now), f.dependencies);
+  assert.equal(summary.statuses.failed, 1);
+  assert.equal(await failedAt(f, "ghost"), new Date(f.clock.now).toISOString());
+});
+
+test("cron refreshes failure-marked unpublished users after the other unpublished users", async () => {
+  const f = refreshFixture();
+  await register(f, "aa-ghost", "zz-user");
+  await admit(f, ["aa-ghost", "zz-user"], ["aa-ghost"]);
+  await runCron(limits(f.clock.now), f.dependencies);
+  const profiles = f.calls.filter((page) => page.kind === "profile").map((page) => page.username);
+  assert.deepEqual(profiles, ["zz-user", "aa-ghost"]);
+});
+
+test("cron clears a failure mark left on a published user and skips the write when nothing changes", async () => {
+  const f = refreshFixture();
+  await register(f, "alpha");
+  await runCron(limits(f.clock.now), f.dependencies);
+  // 발행 직후 job이 오류로 끝나 해제가 빠진 상황처럼, 발행된 사용자에 실패 표시만 남깁니다.
+  await admit(f, ["alpha"], ["alpha"]);
+  const write = f.privateStore.write.bind(f.privateStore);
+  const admissionWrites: string[] = [];
+  f.privateStore.write = async (pathname, ...rest) => {
+    if (pathname === ADMISSIONS_PATHNAME) admissionWrites.push(pathname);
+    return write(pathname, ...rest);
+  };
+
+  const summary = await runCron(limits(f.clock.now), f.dependencies);
+  assert.equal(summary.due, 0);
+  assert.equal(await failedAt(f, "alpha"), null);
+  assert.equal(admissionWrites.length, 1);
+  await runCron(limits(f.clock.now), f.dependencies);
+  assert.equal(admissionWrites.length, 1);
+});
+
+test("an unreadable or unwritable admission record is counted without stopping the refresh", async () => {
+  for (const failing of ["read", "write"] as const) {
+    const f = refreshFixture();
+    await register(f, "alpha");
+    await admit(f, ["alpha"], ["alpha"]);
+    if (failing === "read") {
+      const read = f.privateStore.read.bind(f.privateStore);
+      f.privateStore.read = async (pathname, signal) => {
+        if (pathname === ADMISSIONS_PATHNAME) throw new Error("admissions unavailable");
+        return read(pathname, signal);
+      };
+    } else {
+      const write = f.privateStore.write.bind(f.privateStore);
+      f.privateStore.write = async (pathname, ...rest) => {
+        if (pathname === ADMISSIONS_PATHNAME) throw new Error("admissions unavailable");
+        return write(pathname, ...rest);
+      };
+    }
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const summary = await runCron(limits(f.clock.now), f.dependencies);
+      assert.equal(summary.published, 1, failing);
+      assert.equal(summary.errors, 1, failing);
+    } finally {
+      console.error = originalError;
+    }
+    const response = await cardResponse(new Request("https://example.test/alpha/stats.svg"), f.dependencies.stores);
+    assert.equal(response.headers.get("X-Card-Status"), "ready", failing);
+  }
 });
