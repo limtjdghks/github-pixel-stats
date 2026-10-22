@@ -13,6 +13,7 @@
     "generate": "node --import tsx src/cli/generate.ts",
     "build:fixture": "node --import tsx src/cli/build-fixture.ts",
     "validate:output": "node --import tsx src/cli/validate-output.ts",
+    "validate:vercel-output": "node --import tsx src/cli/validate-vercel-output.ts",
     "ops": "node --import tsx src/cli/ops.ts",
     "build:cards": "npm run typecheck && npm run generate && npm run validate:output -- --state build/next-state.json --out dist",
     "build": "npm run typecheck && npm run build:fixture"

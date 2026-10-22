@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # workflow의 action은 full commit SHA로 고정하고 Dependabot PR로만 올립니다.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
