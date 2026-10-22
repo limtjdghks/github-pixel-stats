@@ -2,12 +2,12 @@ import type { BatchResult } from "../data/checkpoint-model.js";
 import { readAdmissions, updateAdmissions, type Admissions } from "../storage/admissions.js";
 import type { ObjectEntry, ObjectStore } from "../storage/object-store.js";
 import { countOperations, emptyOperationCount, type BlobOperationCount } from "../storage/operation-count.js";
-import { CHECKPOINT_PREFIX, MANIFEST_PREFIX, userKeyFromPathname } from "../storage/pathnames.js";
+import { CHECKPOINT_PREFIX, checkpointPathname, MANIFEST_PREFIX, userKeyFromPathname } from "../storage/pathnames.js";
 import { readUsage, removeExpiredUsage, updateUsage } from "../storage/usage.js";
-import { clearAdmissionFailures, markAdmissionFailures } from "./admission-policy.js";
+import { clearAdmissionFailures, expiredFailures, markAdmissionFailures, removeAdmissions } from "./admission-policy.js";
 import { boundedDeadline } from "./invocation-deadline.js";
 import { logError } from "./log.js";
-import { PUBLISH_RESERVE_MS, runRefreshJob, type RefreshDependencies } from "./refresh-job.js";
+import { PUBLISH_RESERVE_MS, PublishFailure, runRefreshJob, type RefreshDependencies } from "./refresh-job.js";
 import { selectDueUsers } from "./refresh-policy.js";
 import {
   addCronUsage,
@@ -48,6 +48,10 @@ export interface CronSummary {
   published: number;
   requests: number;
   errors: number;
+  /** `errors` 중 수집이 끝난 결과의 발행이 실패한 수입니다. 같은 사용자가 매일 반복되면 결정적 실패일 수 있습니다. */
+  publishFailures: number;
+  /** 실패 표시 후 보존 기간이 지나 checkpoint와 등록 항목을 지운 미발행 사용자 수입니다. */
+  expired: number;
   statuses: Record<BatchResult["status"], number>;
   /** 루프를 끝낸 이유입니다. `complete` 외에는 남은 due 사용자를 다음 실행이 이어받습니다. */
   stopped: "complete" | "deadline" | "requests" | "rate-limit" | "blob-budget";
@@ -89,6 +93,8 @@ export async function runCron(limits: CronLimits, dependencies: RefreshDependenc
     published: 0,
     requests: 0,
     errors: 0,
+    publishFailures: 0,
+    expired: 0,
     statuses: { paused: 0, busy: 0, conflict: 0, failed: 0, ready: 0 },
     stopped: "complete",
     blob: { operations: emptyOperationCount(), dailyAdvanced: null, dailyBudget: DAILY_ADVANCED_BUDGET },
@@ -141,10 +147,15 @@ async function refreshDueUsers(
     summary.errors += 1;
     logError("cron.admissions_read_failed", error);
   }
-  const deferred = new Set(admissions === null ? [] : Object.entries(admissions.users)
-    .filter(([, admission]) => admission.failedAt !== null)
-    .map(([key]) => key));
-  const users = selectDueUsers(checkpoints, manifests, dependencies.now(), deferred);
+  const entries = admissions === null ? [] : Object.entries(admissions.users);
+  const deferred = new Set(entries.filter(([, admission]) => admission.failedAt !== null).map(([key]) => key));
+  // 삭제 표시된 사용자는 삭제 도중 남은 checkpoint가 있어도 다시 수집하지 않습니다.
+  const excluded = new Set(entries.filter(([, admission]) => admission.removedAt !== null).map(([key]) => key));
+  const expired = admissions === null ? [] : await removeExpiredCheckpoints(
+    store, expiredFailures(admissions, new Set(publishedKeys(manifests)), dependencies.now()), summary,
+  );
+  for (const key of expired) excluded.add(key);
+  const users = selectDueUsers(checkpoints, manifests, dependencies.now(), deferred).filter((key) => !excluded.has(key));
   summary.due = users.length;
   const published: string[] = [];
   const failed: string[] = [];
@@ -181,11 +192,16 @@ async function refreshDueUsers(
       }
     } catch (error) {
       summary.errors += 1;
-      logError("cron.refresh_failed", error);
+      if (error instanceof PublishFailure) {
+        summary.publishFailures += 1;
+        logError("cron.publish_failed", error);
+      } else {
+        logError("cron.refresh_failed", error);
+      }
     }
   }
   if (admissions !== null) {
-    const outcome = { published: [...publishedKeys(manifests), ...published], failed };
+    const outcome = { published: [...publishedKeys(manifests), ...published], failed, expired };
     const now = dependencies.now();
     // 시작할 때 읽은 기록으로도 바꿀 것이 없으면 쓰지 않아, 변화 없는 실행마다 등록 기록을 다시 읽고 쓰지 않습니다.
     if (reconcileAdmissions(admissions, outcome, now) !== null) {
@@ -215,6 +231,7 @@ async function recordUsage(store: ObjectStore, startedAt: Date, summary: CronSum
     published: summary.published,
     requests: summary.requests,
     errors: summary.errors,
+    publishFailures: summary.publishFailures,
   };
   try {
     const usage = await updateUsage(store, startedAt, (current) => addCronUsage(current, run), AbortSignal.timeout(CRON_USAGE_TIMEOUT_MS));
@@ -232,19 +249,40 @@ function publishedKeys(manifests: readonly ObjectEntry[]): string[] {
 }
 
 /**
+ * 지울 checkpoint를 지우고 지운 사용자 key를 반환합니다. 실패하면 이번 실행에서는 등록 항목도 지우지 않아,
+ * checkpoint만 남은 사용자가 실패 표시 없이 다시 수집되지 않게 합니다. delete는 Blob 요금이 없습니다.
+ */
+async function removeExpiredCheckpoints(store: ObjectStore, keys: readonly string[], summary: CronSummary): Promise<string[]> {
+  if (keys.length === 0) return [];
+  try {
+    await store.delete(keys.map((key) => checkpointPathname(key)));
+  } catch (error) {
+    summary.errors += 1;
+    logError("cron.expired_cleanup_failed", error);
+    return [];
+  }
+  summary.expired = keys.length;
+  return [...keys];
+}
+
+/**
  * Cron 결과를 등록 기록에 반영합니다. 바꿀 것이 없으면 null입니다.
  * - `published`: manifest가 있거나 이번 실행에서 발행한 사용자. 실패 표시를 지웁니다. 실행 시작 때의 manifest 목록도
  *   넣는 이유는 발행 직후 job이 오류로 끝나 이번 결과에 빠진 사용자의 표시도 다음 실행에서 지우기 위해서입니다.
  * - `failed`: 이번 실행에서 발행 없이 수집이 `failed`가 된 사용자. 실패를 표시해 active 수에서 빼고,
  *   이후 카드 요청이 bootstrap을 예약하지 않게 합니다. manifest가 있는 사용자는 `published`가 우선합니다.
+ * - `expired`: 실패 표시 후 보존 기간이 지나 이번 실행에서 checkpoint를 지운 사용자. 등록 항목을 지웁니다.
+ *   다시 읽은 기록에서 그 사이 실패 표시가 풀렸거나 삭제 표시가 생긴 사용자는 지우지 않습니다.
  */
 function reconcileAdmissions(
   admissions: Admissions,
-  outcome: { published: readonly string[]; failed: readonly string[] },
+  outcome: { published: readonly string[]; failed: readonly string[]; expired: readonly string[] },
   now: Date,
 ): Admissions | null {
   const published = new Set(outcome.published);
   const cleared = clearAdmissionFailures(admissions, [...published]);
   const failed = outcome.failed.filter((key) => !published.has(key));
-  return markAdmissionFailures(cleared ?? admissions, failed, now) ?? cleared;
+  const marked = markAdmissionFailures(cleared ?? admissions, failed, now) ?? cleared;
+  const still = new Set(expiredFailures(marked ?? admissions, published, now));
+  return removeAdmissions(marked ?? admissions, outcome.expired.filter((key) => still.has(key))) ?? marked;
 }

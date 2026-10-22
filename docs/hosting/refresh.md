@@ -64,9 +64,9 @@
 
 - 대상은 private store의 `checkpoints/`, `manifests/` 목록으로 고르며 checkpoint·manifest 본문은 읽지 않습니다. 미발행 사용자의 순서를 정할 때만 등록 기록 하나를 함께 읽습니다. manifest가 20시간 이상 교체되지 않은 발행 사용자를 오래된 순으로 먼저, 그다음 manifest가 없는 사용자(bootstrap 미완료)를 처리합니다. 카드 URL만으로 생긴 checkpoint가 실패를 반복하더라도 이미 카드를 쓰는 사용자의 갱신 예산을 먼저 쓰지 않게 하기 위한 순서입니다.
 - 실행 전체 예산은 280초입니다(`maxDuration` 300초, 종료 시각보다 10초 앞당김). GitHub 요청 상한은 실행당 1,000회, 사용자당 시간은 60초입니다. 남은 시간이 발행 여유를 포함해 15초보다 적거나, 요청 상한에 도달하거나, 오늘의 Blob Advanced Operation 예산에 job 하나가 더 들어가지 않으면 멈춥니다. 예산은 시작할 때 읽은 오늘의 사용량 기록으로 구하며, 기록을 읽지 못하면 갱신하지 않습니다([`operations.md`](./operations.md)). 한 사용자의 batch가 GitHub rate limit으로 멈춰도 같은 token을 쓰는 나머지 사용자를 처리하지 않고 멈춥니다. 남은 사용자는 다음 실행이 이어받습니다. 요청 수는 GitHub 요청마다 세므로, 발행이나 저장소 오류로 끝난 사용자가 보낸 요청도 상한에 포함됩니다.
-- 사용자 한 명의 저장소·발행 오류는 집계하고 다음 사용자로 넘어갑니다.
-- 시작할 때 등록 기록을 읽어 실패 표시된 미발행 사용자를 다른 미발행 사용자 뒤에 둡니다. 루프가 끝나면 한 번의 쓰기로 manifest가 있거나 이번에 발행한 사용자의 실패 표시를 지우고, 이번에 발행 없이 `failed`가 된 등록 사용자에 실패를 표시합니다. 등록 기록 읽기·쓰기는 한 번에 4초 안에서만 실행하며, 실패해도 갱신과 발행은 계속되고 `errors`에 집계합니다([`abuse-defense.md`](./abuse-defense.md)).
-- 응답 JSON에는 집계 수치만 담습니다: `due`, `processed`, `published`, `requests`, `errors`, 상태별 개수, 종료 이유(`complete`, `deadline`, `requests`, `rate-limit`, `blob-budget`), Blob 작업 수와 오늘의 예산 사용량(`blob`). 사용자명과 오류 메시지는 넣지 않습니다. 시작 직후 보존 기간이 지난 사용량 기록을 지우고, 실행이 끝나면 오늘의 사용량 기록에 이번 실행을 더합니다.
+- 사용자 한 명의 저장소·발행 오류는 집계하고 다음 사용자로 넘어갑니다. 수집이 끝난 결과의 발행 실패는 `PublishFailure`로 구분해 `publishFailures`에도 셉니다. `ready` checkpoint가 남으므로 다음 실행은 GitHub 요청 없이 같은 결과의 발행을 다시 시도합니다([`recovery.md`](./recovery.md)).
+- 시작할 때 등록 기록을 읽어 실패 표시된 미발행 사용자를 다른 미발행 사용자 뒤에 둡니다. 루프가 끝나면 한 번의 쓰기로 manifest가 있거나 이번에 발행한 사용자의 실패 표시를 지우고, 이번에 발행 없이 `failed`가 된 등록 사용자에 실패를 표시합니다. 삭제 표시된 사용자는 checkpoint가 남아 있어도 갱신하지 않습니다. 실패 표시 후 7일이 지난 미발행 사용자는 갱신 대상에서 빼고 checkpoint를 지운 뒤, 같은 쓰기로 등록 항목도 지웁니다([`recovery.md`](./recovery.md)). 등록 기록 읽기·쓰기는 한 번에 4초 안에서만 실행하며, 실패해도 갱신과 발행은 계속되고 `errors`에 집계합니다([`abuse-defense.md`](./abuse-defense.md)).
+- 응답 JSON에는 집계 수치만 담습니다: `due`, `processed`, `published`, `requests`, `errors`, `publishFailures`, 정리한 실패 사용자 수(`expired`), 상태별 개수, 종료 이유(`complete`, `deadline`, `requests`, `rate-limit`, `blob-budget`), Blob 작업 수와 오늘의 예산 사용량(`blob`). 사용자명과 오류 메시지는 넣지 않습니다. 시작 직후 보존 기간이 지난 사용량 기록을 지우고, 실행이 끝나면 오늘의 사용량 기록에 이번 실행을 더합니다.
 - Cron 전달은 누락되거나 중복되거나 겹칠 수 있습니다. 매 실행이 목록에서 대상을 다시 고르고 checkpoint lease와 manifest 조건부 교체에 기대므로, 겹친 실행도 사용자별로 한 번만 발행합니다. 누락된 실행은 다음 실행에서 due 판정으로 회복합니다. 실패한 invocation은 Vercel이 재시도하지 않습니다.
 
 ## 운영 설정

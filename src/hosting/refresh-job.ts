@@ -10,6 +10,13 @@ import { REFRESH_INTERVAL_MS } from "./refresh-policy.js";
  * 발행은 abort signal을 받지 않으므로 batch deadline을 이만큼 앞당겨 전체 deadline을 넘기지 않게 합니다.
  */
 export const PUBLISH_RESERVE_MS = 5_000;
+
+/**
+ * 수집이 끝난 결과의 발행(렌더링·검증·Blob 쓰기)이 실패했다는 오류입니다. 원래 오류는 `cause`에 있습니다.
+ * 검증처럼 결과가 같으면 매번 실패하는 오류는 `ready` checkpoint가 남아 다음 실행도 같은 결과를 발행하려다 실패하므로,
+ * 호출자가 일반 오류와 구분해 집계할 수 있게 합니다.
+ */
+export class PublishFailure extends Error {}
 const CHECKPOINT_RESERVE_MS = 1_000;
 
 export interface RefreshDependencies extends Omit<BatchDependencies, "loadClassifier"> {
@@ -38,7 +45,7 @@ export interface RefreshOutcome {
  * 사용자 한 명을 deadline과 요청 상한 안에서 갱신합니다.
  * batch 수집이 `ready`가 되면 발행하고, 발행이 확인된 결과가 `REFRESH_INTERVAL_MS`보다 오래됐으면
  * 같은 실행에서 새 수집 job을 시작합니다. 동시에 실행돼도 checkpoint lease와 manifest 조건부 교체로 한 실행만 전진합니다.
- * 저장소·발행 오류는 그대로 던지며, 그때까지 저장된 checkpoint와 마지막 성공 manifest는 유지됩니다.
+ * 저장소 오류는 그대로, 발행 오류는 `PublishFailure`로 던지며, 그때까지 저장된 checkpoint와 마지막 성공 manifest는 유지됩니다.
  */
 export async function runRefreshJob(
   username: string,
@@ -72,11 +79,13 @@ export async function runRefreshJob(
     });
     if (batch.status !== "ready" || batch.result === null || batch.checkpoint === null) return done();
 
-    const published = await publishRelease(batch.result, {
-      ...dependencies.stores,
-      classifier: await dependencies.loadClassifier(),
-      now: dependencies.now,
-    });
+    const classifier = await dependencies.loadClassifier();
+    let published: PublishOutcome;
+    try {
+      published = await publishRelease(batch.result, { ...dependencies.stores, classifier, now: dependencies.now });
+    } catch (error) {
+      throw new PublishFailure(error instanceof Error ? error.message : "unknown error", { cause: error });
+    }
     publish = published.status;
     const cutoff = dependencies.now().getTime() - REFRESH_INTERVAL_MS;
     if (pass === 1 || published.status === "conflict" || Date.parse(batch.checkpoint.period.to) > cutoff) return done();

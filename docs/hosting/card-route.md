@@ -44,6 +44,7 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 | manifest 없음, 등록됐거나 상한에 여유(bootstrap 예약) | `pending` | pending SVG | `no-store` |
 | manifest 없음, 수집 실패 표시 | `failed` | 상태 SVG | negative cache |
 | manifest 없음, 미등록이고 상한 도달 | `capacity` | 상태 SVG | 상한 도달 |
+| manifest 없음, 운영자 삭제 표시 | `removed` | 상태 SVG | 삭제됨 |
 | 사용자명 형식 오류 | `invalid-username` | 상태 SVG | URL로 결정 |
 | Blob store 미설정, manifest·등록 기록 손상, 카드 객체 없음, 읽기 실패·시간 초과 | `unavailable` | 상태 SVG | `no-store` |
 
@@ -55,6 +56,7 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 | 정규 URL redirect, URL로 결정(`invalid-username`) | `public, max-age=300` | `max-age=86400` |
 | negative cache(`failed`) | `no-store` | `max-age=3600` |
 | 상한 도달(`capacity`) | `no-store` | `max-age=600` |
+| 삭제 표시(`removed`) | `no-store` | `max-age=3600` |
 | `pending`, `unavailable` | `no-store` | 없음 |
 
 - 갱신은 하루 1회라 purge 없이 TTL로만 운영합니다. 발행 후 이전 카드가 보일 수 있는 범위는 CDN fresh 12시간, 그 뒤 첫 요청의 stale 응답 1회(사본은 최대 36시간 전 것), 그리고 응답마다 그대로 전달되는 `Cache-Control`로 브라우저·이미지 proxy가 보관하는 5분입니다. 하루 한 번만 조회되는 경로는 매번 한 번 늦은 카드를 받을 수 있습니다. Vercel cache 시간은 best-effort라 드물게 요청되는 항목은 더 일찍 축출될 수 있습니다.

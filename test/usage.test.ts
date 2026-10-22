@@ -65,6 +65,14 @@ test("usage is read as empty when absent and rejected when corrupted or dated di
   await assert.rejects(readUsage(new MemoryObjectStore("public"), NOW), /private store/);
 });
 
+test("usage written before publish failures were counted is read with zero failures", async () => {
+  const store = new MemoryObjectStore("private");
+  const legacy = emptyUsage(NOW) as unknown as { cron: Record<string, number> };
+  delete legacy.cron.publishFailures;
+  await store.write(usagePathname(NOW), JSON.stringify(legacy), JSON_OPTIONS);
+  assert.equal((await readUsage(store, NOW)).usage.cron.publishFailures, 0);
+});
+
 test("concurrent usage updates retry conditional writes and keep every run", async () => {
   const store = new MemoryObjectStore("private");
   const run = { operations: { advanced: 3, simple: 2 }, published: true, requests: 4 };
@@ -110,9 +118,9 @@ test("budget rules leave room for the usage write and cap the bootstrap share", 
 
 test("cron usage adds the run and its own record write to the daily totals", () => {
   const usage = addCronUsage(usageWith(10, 4), {
-    operations: { advanced: 20, simple: 7 }, processed: 2, published: 1, requests: 30, errors: 1,
+    operations: { advanced: 20, simple: 7 }, processed: 2, published: 1, requests: 30, errors: 1, publishFailures: 1,
   });
   assert.deepEqual(usage.blob, { advanced: 10 + 20 + USAGE_RECORD_OPERATIONS.advanced, simple: 7 + USAGE_RECORD_OPERATIONS.simple });
-  assert.deepEqual(usage.cron, { runs: 1, processed: 2, published: 1, requests: 30, errors: 1 });
+  assert.deepEqual(usage.cron, { runs: 1, processed: 2, published: 1, requests: 30, errors: 1, publishFailures: 1 });
   assert.equal(usage.bootstrap.advanced, 4);
 });

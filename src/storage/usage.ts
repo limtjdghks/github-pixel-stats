@@ -15,7 +15,7 @@ export interface DailyUsage {
   schemaVersion: typeof USAGE_SCHEMA_VERSION;
   date: string;
   blob: { advanced: number; simple: number };
-  cron: { runs: number; processed: number; published: number; requests: number; errors: number };
+  cron: { runs: number; processed: number; published: number; requests: number; errors: number; publishFailures: number };
   bootstrap: { runs: number; published: number; requests: number; advanced: number };
 }
 
@@ -45,7 +45,7 @@ export function emptyUsage(date: Date): DailyUsage {
     schemaVersion: USAGE_SCHEMA_VERSION,
     date: usageDateKey(date),
     blob: { advanced: 0, simple: 0 },
-    cron: { runs: 0, processed: 0, published: 0, requests: 0, errors: 0 },
+    cron: { runs: 0, processed: 0, published: 0, requests: 0, errors: 0, publishFailures: 0 },
     bootstrap: { runs: 0, published: 0, requests: 0, advanced: 0 },
   };
 }
@@ -58,7 +58,9 @@ function parseUsage(value: unknown, date: Date): DailyUsage {
     schemaVersion: USAGE_SCHEMA_VERSION,
     date: value.date,
     blob: counters(value.blob, ["advanced", "simple"]),
-    cron: counters(value.cron, ["runs", "processed", "published", "requests", "errors"]),
+    // `publishFailures`가 생기기 전에 쓴 기록은 이 필드가 없으므로 0으로 읽습니다.
+    cron: counters(isRecord(value.cron) ? { publishFailures: 0, ...value.cron } : value.cron,
+      ["runs", "processed", "published", "requests", "errors", "publishFailures"]),
     bootstrap: counters(value.bootstrap, ["runs", "published", "requests", "advanced"]),
   };
 }

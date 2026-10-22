@@ -7,10 +7,14 @@ export const ADMISSIONS_SCHEMA_VERSION = 1 as const;
 /** 조건부 교체가 다른 실행과 계속 충돌할 때 포기하기 전까지 다시 읽는 횟수입니다. */
 export const ADMISSIONS_UPDATE_ATTEMPTS = 5;
 
-/** `failedAt`은 발행 전 수집이 실패했다는 표시이며, 발행에 성공하면 지웁니다. */
+/**
+ * `failedAt`은 발행 전 수집이 실패했다는 표시이며, 발행에 성공하면 지웁니다.
+ * `removedAt`은 운영자가 사용자 데이터를 삭제하고 재수집을 막았다는 표시이며, 운영자가 해제할 때까지 남습니다.
+ */
 export interface Admission {
   admittedAt: string;
   failedAt: string | null;
+  removedAt: string | null;
 }
 
 /**
@@ -54,13 +58,16 @@ function parseAdmissions(value: unknown): Admissions {
   }
   const users: Record<string, Admission> = {};
   for (const [key, entry] of Object.entries(value.users)) {
+    // `removedAt`이 생기기 전에 쓴 항목은 이 필드가 없으므로 표시 없음으로 읽습니다.
+    const removedAt = isRecord(entry) ? entry.removedAt ?? null : null;
     if (
       !isUserKey(key) || !isRecord(entry) || !isTimestamp(entry.admittedAt) ||
-      (entry.failedAt !== null && !isTimestamp(entry.failedAt))
+      (entry.failedAt !== null && !isTimestamp(entry.failedAt)) ||
+      (removedAt !== null && !isTimestamp(removedAt))
     ) {
       throw new Error("Admissions have an invalid entry.");
     }
-    users[key] = { admittedAt: entry.admittedAt, failedAt: entry.failedAt };
+    users[key] = { admittedAt: entry.admittedAt, failedAt: entry.failedAt, removedAt };
   }
   return { schemaVersion: ADMISSIONS_SCHEMA_VERSION, users };
 }

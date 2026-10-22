@@ -44,6 +44,7 @@ export interface CronUsage {
   published: number;
   requests: number;
   errors: number;
+  publishFailures: number;
 }
 
 export interface BootstrapUsage {
@@ -70,6 +71,7 @@ export function addCronUsage(usage: DailyUsage, run: CronUsage): DailyUsage {
       published: usage.cron.published + run.published,
       requests: usage.cron.requests + run.requests,
       errors: usage.cron.errors + run.errors,
+      publishFailures: usage.cron.publishFailures + run.publishFailures,
     },
   };
 }

@@ -127,6 +127,25 @@ export function nextManifest(
   };
 }
 
+/**
+ * 직전 release를 current로 올린 manifest입니다. 잘못된 current는 `now`에 퇴역 처리해 유예 뒤 정리되게 하고,
+ * previous는 비웁니다(잘못된 release가 대체 카드로 쓰이지 않게). previous가 없으면 null입니다.
+ */
+export function rolledBackManifest(manifest: CardManifest, now: Date): CardManifest | null {
+  const { current, previous } = manifest;
+  if (previous === null) return null;
+  return {
+    ...manifest,
+    publishedAt: now.toISOString(),
+    current: previous,
+    previous: null,
+    retired: [
+      ...manifest.retired.filter((entry) => entry.version !== current.version && entry.version !== previous.version),
+      { ...current, retiredAt: now.toISOString() },
+    ],
+  };
+}
+
 /** manifest가 보존해야 하는 private·public pathname 목록입니다. 유예 중인 퇴역 release도 포함합니다. */
 export function referencedPathnames(manifest: CardManifest): { private: Set<string>; public: Set<string> } {
   const references = { private: new Set<string>(), public: new Set<string>() };
