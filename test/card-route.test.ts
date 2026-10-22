@@ -73,7 +73,7 @@ test("published users receive the current release card from the public store", a
     assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff", path);
     assert.match(response.headers.get("Content-Security-Policy") ?? "", /default-src 'none'/, path);
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=300", path);
-    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=3600, stale-while-revalidate=86400", path);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=43200, stale-while-revalidate=86400", path);
     assert.equal(await response.text(), publicStore.objects.get(pathname)?.body, path);
   }
 });
@@ -459,7 +459,7 @@ test("published users receive their card regardless of the admission record", as
       onPending: (username) => { calls.push(username); },
     });
     assert.equal(response.headers.get("X-Card-Status"), "ready", label);
-    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=3600, stale-while-revalidate=86400", label);
+    assert.equal(response.headers.get("Vercel-CDN-Cache-Control"), "max-age=43200, stale-while-revalidate=86400", label);
   }
   assert.deepEqual(calls, []);
 });

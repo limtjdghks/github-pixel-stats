@@ -50,7 +50,9 @@ test("bootstrap does not retry failed users and swallows storage errors", async 
 
     f.dependencies.checkpoints.load = async () => { throw new Error("checkpoint unavailable"); };
     await bootstrapUser("other", deadline(REFRESH_NOW), f.dependencies);
-    assert.deepEqual(messages, [["Bootstrap failed:", "checkpoint unavailable"]]);
+    assert.deepEqual(messages.map((args) => JSON.parse((args as string[])[0]!)), [
+      { level: "error", event: "bootstrap.failed", error: "checkpoint unavailable" },
+    ]);
   } finally {
     console.error = originalError;
   }

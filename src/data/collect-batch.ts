@@ -13,6 +13,13 @@ import { acceptPage, advanceWithoutRequest, nextPageRequest } from "./checkpoint
 import { retryDecision } from "./github-pages.js";
 import { parseState } from "./state-validation.js";
 
+/**
+ * 수집 중 checkpoint 저장의 최소 간격입니다. checkpoint 쓰기는 Blob Advanced Operation이므로 GitHub 페이지마다 저장하지
+ * 않고, pause·완료·실패 때는 간격과 관계없이 저장합니다. Function이 강제로 끝나거나, 수집이 실패하거나, pause·완료 저장
+ * 자체가 실패하면 마지막 저장 뒤 받은 페이지는 사라지고 다음 batch가 같은 페이지를 다시 요청합니다.
+ */
+export const CHECKPOINT_SAVE_INTERVAL_MS = 10_000;
+
 class LeaseConflict extends Error {}
 class CheckpointWriteFailure extends Error {}
 
@@ -80,7 +87,9 @@ function assertOptions(options: BatchOptions): void {
     !Number.isSafeInteger(options.checkpointReserveMs) || options.checkpointReserveMs <= 0 ||
     !Number.isSafeInteger(options.maxRequests) || options.maxRequests < 0 ||
     (options.maxNewCommits !== undefined && (!Number.isSafeInteger(options.maxNewCommits) || options.maxNewCommits < 0)) ||
-    (options.restartReadyUntil !== undefined && !Number.isFinite(options.restartReadyUntil.getTime()))
+    (options.restartReadyUntil !== undefined && !Number.isFinite(options.restartReadyUntil.getTime())) ||
+    (options.checkpointIntervalMs !== undefined &&
+      (!Number.isSafeInteger(options.checkpointIntervalMs) || options.checkpointIntervalMs < 0))
   ) {
     throw new Error("Invalid collection batch limits.");
   }
@@ -153,6 +162,8 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
     }
     revision = acquired;
     let lastSaved = structuredClone(checkpoint);
+    let lastSavedAt = clock();
+    const saveInterval = options.checkpointIntervalMs ?? CHECKPOINT_SAVE_INTERVAL_MS;
     const initialFetched = checkpoint.metrics.fetchedCommits;
 
     const persist = async (release = false): Promise<void> => {
@@ -175,6 +186,12 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
       }
       revision = nextRevision;
       lastSaved = structuredClone(checkpoint);
+      lastSavedAt = clock();
+    };
+
+    // 진행 중 저장만 간격을 둡니다. 저장하지 않은 진행은 실패 처리 시 `lastSaved`로 되돌아갑니다.
+    const saveProgress = async (): Promise<void> => {
+      if (clock() - lastSavedAt >= saveInterval) await persist();
     };
 
     const pause = async (): Promise<BatchResult> => {
@@ -211,14 +228,14 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
             ? parseState(loaded.state, checkpoint.username).state
             : null;
           checkpoint.stateLoaded = true;
-          await persist();
+          await saveProgress();
         }
         if (advanceWithoutRequest(checkpoint, classifier)) {
           if (checkpoint.result !== null) {
             await persist(true);
             return response("ready");
           }
-          await persist();
+          await saveProgress();
           continue;
         }
         if (
@@ -259,7 +276,7 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
           throw error;
         }
         checkpoint.retry = { attempts: 0, nextAttemptAt: null };
-        await persist();
+        await saveProgress();
       }
       throw new Error("Completed cursor has no collection result.");
     } catch (error) {

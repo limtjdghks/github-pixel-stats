@@ -21,7 +21,7 @@
 
 ## 등록 기록
 
-private store의 `admissions.json` 하나에 전체 사용자를 기록합니다. 사용자 key(소문자)마다 등록 시각 `admittedAt`과 실패 표시 `failedAt`(없으면 null)을 둡니다. 상한을 동시 요청에서도 정확히 지키기 위해 사용자별 객체가 아닌 단일 객체를 쓰고, 항상 읽은 ETag로만 조건부 교체합니다. 충돌하면 다시 읽어 판정을 다시 하며, 5번 모두 충돌하면 이번 bootstrap을 포기합니다. 포기한 사용자는 등록되지 않았으므로 다음 카드 요청이 다시 시도합니다. 등록 기록 읽기·쓰기는 bootstrap에서는 bootstrap deadline, Cron에서는 한 번에 5초(`CRON_ADMISSIONS_TIMEOUT_MS`) 안에서만 실행합니다.
+private store의 `admissions.json` 하나에 전체 사용자를 기록합니다. 사용자 key(소문자)마다 등록 시각 `admittedAt`과 실패 표시 `failedAt`(없으면 null)을 둡니다. 상한을 동시 요청에서도 정확히 지키기 위해 사용자별 객체가 아닌 단일 객체를 쓰고, 항상 읽은 ETag로만 조건부 교체합니다. 충돌하면 다시 읽어 판정을 다시 하며, 5번 모두 충돌하면 이번 bootstrap을 포기합니다. 포기한 사용자는 등록되지 않았으므로 다음 카드 요청이 다시 시도합니다. 등록 기록 읽기·쓰기는 bootstrap에서는 bootstrap deadline, Cron에서는 한 번에 4초(`CRON_ADMISSIONS_TIMEOUT_MS`) 안에서만 실행합니다.
 
 등록 상태는 다음 중 하나입니다(`admissionDecision()`).
 
@@ -95,5 +95,5 @@ private store의 `admissions.json` 하나에 전체 사용자를 기록합니다
 
 ## 범위 밖
 
-- 등록 기록의 보존·삭제(실패 사용자 정리, 삭제 요청)와 cache hit율·비용 관측은 HOST-11입니다.
+- 등록 기록의 보존·삭제(실패 사용자 정리, 삭제 요청)는 HOST-11 ②입니다. Blob 사용량 예산과 로그는 [`operations.md`](./operations.md)에 있습니다.
 - 실제 WAF rule 생성·Log 관측·action 전환, 실제 CDN에서 `Cache-Control: no-store`와 `Vercel-CDN-Cache-Control`을 함께 쓴 상태 SVG가 cache되는지(`x-vercel-cache`)는 HOST-13 staging에서 확인합니다.

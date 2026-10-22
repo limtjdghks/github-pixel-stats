@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { collectStats } from "../src/data/collect.js";
-import { collectStatsBatch } from "../src/data/collect-batch.js";
+import { CHECKPOINT_SAVE_INTERVAL_MS, collectStatsBatch } from "../src/data/collect-batch.js";
 import type { BatchDependencies, BatchOptions, BatchResult, CollectionCheckpoint } from "../src/data/checkpoint-model.js";
 import type { LanguageClassifier } from "../src/data/collection-ports.js";
 import { GitHubRequestError, type PageRequest, type PageResult } from "../src/data/github-pages.js";
@@ -211,7 +211,8 @@ test("a failed ready write never publishes an unpersisted result and can resume"
       return base.compareAndSwap(...args);
     },
   };
-  await assert.rejects(collectStatsBatch(f.options(), f.dependencies), /ready write failed/);
+  // 페이지마다 저장해야 재개가 GitHub 요청을 반복하지 않는지 확인할 수 있습니다.
+  await assert.rejects(collectStatsBatch(f.options({ checkpointIntervalMs: 0 }), f.dependencies), /ready write failed/);
   const saved = (await base.load("fixture", new AbortController().signal))!.value as CollectionCheckpoint;
   assert.notEqual(saved.status, "ready");
   assert.equal(saved.result, null);
@@ -246,7 +247,7 @@ test("failed API request resumes explicitly without repeating saved pages", asyn
     if (request.kind === "files" && request.sha === f.searched[1]!.sha && fail) throw new Error("detail unavailable");
     return f.page(request);
   };
-  const failed = await collectStatsBatch(f.options(), f.dependencies);
+  const failed = await collectStatsBatch(f.options({ checkpointIntervalMs: 0 }), f.dependencies);
   assert.equal(failed.status, "failed");
   assert.equal(failed.checkpoint?.metrics.fetchedCommits, 1);
   assert.equal(failed.result, null);
@@ -256,6 +257,71 @@ test("failed API request resumes explicitly without repeating saved pages", asyn
   assert.equal(done.result?.metrics.fetchedCommits, 2);
   assert.equal(f.calls.filter((request) => request.kind === "profile").length, 1);
   assert.equal(f.calls.filter((request) => request.kind === "files" && request.sha === f.searched[0]!.sha).length, 1);
+});
+
+/** checkpoint 쓰기를 세면서 GitHub 요청마다 시계를 `stepMs`만큼 진행합니다. */
+function countingSaves(f: ReturnType<typeof fixture>, stepMs: number): CollectionCheckpoint[] {
+  const base = f.store;
+  const saved: CollectionCheckpoint[] = [];
+  f.dependencies.checkpoints = {
+    load: base.load.bind(base),
+    compareAndSwap: async (...args) => {
+      saved.push(structuredClone(args[2]));
+      return base.compareAndSwap(...args);
+    },
+  };
+  const request = f.dependencies.github.requestPage;
+  f.dependencies.github.requestPage = async (pageRequest, signal) => {
+    f.clock.now += stepMs;
+    return request(pageRequest, signal);
+  };
+  return saved;
+}
+
+test("a batch that finishes within the save interval writes only the lease and the ready checkpoint", async () => {
+  const f = fixture(3);
+  const saved = countingSaves(f, 0);
+  const result = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(result.status, "ready");
+  assert.ok(f.calls.length > 2);
+  assert.deepEqual(saved.map((checkpoint) => checkpoint.status), ["collecting", "ready"]);
+});
+
+test("progress is saved at most once per save interval while collecting", async () => {
+  const f = fixture(10);
+  const saved = countingSaves(f, CHECKPOINT_SAVE_INTERVAL_MS / 4);
+  const result = await collectStatsBatch(f.options({ deadline: new Date(f.clock.now + 600_000) }), f.dependencies);
+  assert.equal(result.status, "ready");
+  const progress = saved.slice(1, -1);
+  assert.ok(progress.length > 0);
+  // 요청 4개마다 간격이 차므로 페이지마다 저장할 때보다 저장 횟수가 크게 줄어듭니다.
+  assert.ok(progress.length <= Math.ceil(f.calls.length / 4));
+});
+
+test("a pause saves unsaved progress so the next batch does not repeat pages", async () => {
+  const f = fixture(3);
+  const first = await collectStatsBatch(f.options({ maxRequests: 4 }), f.dependencies);
+  assert.equal(first.status, "paused");
+  const count = f.calls.length;
+  f.restart();
+  const done = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(done.status, "ready");
+  assert.equal(new Set(f.calls.map((request) => JSON.stringify(request))).size, f.calls.length);
+  assert.ok(f.calls.length > count);
+});
+
+test("a failure before the next save falls back to the last saved checkpoint", async () => {
+  const f = fixture(2);
+  f.dependencies.github.requestPage = async (request) => {
+    f.calls.push(structuredClone(request));
+    if (request.kind === "files" && request.sha === f.searched[1]!.sha) throw new Error("detail unavailable");
+    return f.page(request);
+  };
+  const failed = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(failed.status, "failed");
+  // 간격 안에서 받은 페이지는 저장되지 않았으므로 실패 checkpoint는 lease 획득 때의 진행으로 돌아갑니다.
+  assert.equal(failed.checkpoint?.metrics.fetchedCommits, 0);
+  assert.deepEqual(failed.checkpoint?.cursor, { stage: "profile" });
 });
 
 test("resumeFailed false returns a failed checkpoint without HTTP or restarting it", async () => {
@@ -596,7 +662,7 @@ test("memory checkpoint store serializes values and enforces revision, owner, ex
 test("invalid batch request and commit limits reject before any HTTP", async () => {
   const f = fixture();
   for (const overrides of [{ maxRequests: -1 }, { maxRequests: 1.5 }, { maxNewCommits: -1 }, { checkpointReserveMs: 0 },
-    { restartReadyUntil: new Date(Number.NaN) }]) {
+    { restartReadyUntil: new Date(Number.NaN) }, { checkpointIntervalMs: -1 }, { checkpointIntervalMs: 0.5 }]) {
     await assert.rejects(collectStatsBatch(f.options(overrides), f.dependencies));
   }
   assert.equal(f.calls.length, 0);

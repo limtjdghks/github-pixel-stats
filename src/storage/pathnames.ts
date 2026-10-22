@@ -5,7 +5,7 @@ import { parseUsername } from "../username.js";
 
 /**
  * hosted 저장소 pathname의 SSOT입니다.
- * private store: `admissions.json`, `checkpoints/`, `manifests/`, `releases/`
+ * private store: `admissions.json`, `checkpoints/`, `manifests/`, `releases/`, `usage/`
  * public store: `cards/`
  * raw username이나 query 값은 반드시 이 모듈을 거쳐 pathname이 됩니다.
  */
@@ -44,6 +44,18 @@ export function createReleaseVersion(snapshot: StatsSnapshot, state: CollectorSt
 export const ADMISSIONS_PATHNAME = "admissions.json";
 export const CHECKPOINT_PREFIX = "checkpoints/";
 export const MANIFEST_PREFIX = "manifests/";
+
+export const USAGE_PREFIX = "usage/";
+
+/** `date`가 속한 UTC 날짜(`YYYY-MM-DD`)입니다. 사용량 기록의 pathname과 `date` 필드가 모두 이 값을 씁니다. */
+export function usageDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** `date`가 속한 UTC 날짜의 사용량 객체 pathname입니다(`usage/YYYY-MM-DD.json`). */
+export function usagePathname(date: Date): string {
+  return `${USAGE_PREFIX}${usageDateKey(date)}.json`;
+}
 
 export function checkpointPathname(username: string): string {
   return `${CHECKPOINT_PREFIX}${userKey(username)}.json`;
