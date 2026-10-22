@@ -78,7 +78,7 @@ private store의 `usage/YYYY-MM-DD.json`(UTC 날짜)에 하루 동안의 누적�
 | 필드 | 내용 |
 | --- | --- |
 | `blob.advanced`, `blob.simple` | Cron·bootstrap이 쓴 Blob 작업 합계. 기록 자체의 작업(실행마다 Advanced 1회, 시작 시 읽기를 포함한 Simple 2회)도 포함 |
-| `cron` | 실행 수(`runs`), 처리·발행 사용자 수, GitHub 요청 수, 오류 수 |
+| `cron` | 실행 수(`runs`), 처리·발행 사용자 수, GitHub 요청 수, 오류 수, 그중 발행 실패 수(`publishFailures`, 이 필드가 생기기 전의 기록은 0으로 읽음) |
 | `bootstrap` | 실행 수, 발행 수, GitHub 요청 수, bootstrap 몫 Advanced 합계(`advanced`) |
 
 GitHub 요청 수는 요청마다 세므로, job이 발행이나 저장소 오류로 끝나도 이미 보낸 요청이 들어갑니다(Cron·bootstrap 같은 기준).
@@ -115,7 +115,8 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 | `bootstrap.skipped` | info | `reason: "blob-budget"` |
 | `bootstrap.failed`, `bootstrap.usage_update_failed` | error | `error` |
 | `cron.completed` | info | Cron 응답 집계, `blobAdvanced`, `blobSimple`, `dailyAdvanced`, `dailyBudget` |
-| `cron.failed`, `cron.refresh_failed`, `cron.admissions_*_failed`, `cron.usage_*_failed` | error | `error` |
+| `cron.publish_failed` | error | `error`(수집이 끝난 결과의 발행 실패) |
+| `cron.failed`, `cron.refresh_failed`, `cron.expired_cleanup_failed`, `cron.admissions_*_failed`, `cron.usage_*_failed` | error | `error` |
 
 - `card.response`는 Function까지 온 요청만 남습니다. CDN hit은 Function을 거치지 않으므로, `card.response` 수를 실제 카드 조회 수로 보면 안 됩니다. 발행 카드의 `ready` 수가 CDN miss 수에 해당합니다.
 - Hobby의 런타임 로그는 보존 기간이 짧습니다. 장기 추세는 일별 사용량 기록으로 봅니다.
@@ -125,10 +126,10 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 1. Vercel dashboard의 Usage에서 Blob Advanced·Simple Operations의 이번 달 누적을 확인합니다. 월 포함량의 80%에 가까우면 남은 날짜와 일일 예산을 비교합니다.
 2. Blob Observability에서 카드 응답 경로를 포함한 실제 작업 수를 확인하고, 일별 사용량 기록의 `blob.advanced`와 비교합니다. 차이가 크면 job 추정치나 집계 방식을 다시 봅니다. job 하나의 실제 값은 발행까지 끝난 `bootstrap.completed`의 `blobAdvanced`로 보고 `JOB_ADVANCED_ESTIMATE`(12)와 비교합니다.
 3. Cron의 `cron.completed` 로그나 응답에서 `stopped`가 자주 `blob-budget`이면 처리량이 사용자 수보다 적다는 뜻입니다. freshness와 처리량 절의 선택지를 검토합니다.
-4. 일별 기록을 dashboard에서 열어 보는 것도 Advanced Operation입니다. 자주 확인해야 하면 HOST-11 ②의 운영자 CLI로 읽습니다.
+4. 일별 기록을 dashboard에서 열어 보는 것도 Advanced Operation입니다. 운영자 CLI의 `usage` 명령으로 읽습니다([`recovery.md`](./recovery.md)).
 
 ## 범위 밖
 
-- 실패 사용자 자동 정리, 운영자 삭제·rollback CLI, 장애 복구 runbook은 HOST-11 ②입니다.
+- 실패 사용자 자동 정리, 운영자 삭제·rollback CLI, 장애 복구 절차는 [`recovery.md`](./recovery.md)에 있습니다.
 - 실제 Blob 사용량과 집계값의 차이, job 하나의 실제 Advanced 수, Hobby 런타임 로그 보존 기간, 실제 CDN의 12시간 cache 적용은 HOST-13 staging에서 확인합니다.
 - 오류 로그는 메시지를 그대로 남깁니다. Blob SDK나 발행 경로의 오류 메시지에 pathname(`checkpoints/{user}.json` 등)이나 사용자명이 들어가는지는 HOST-13에서 실제 메시지로 확인하고, 들어가면 마스킹 방식을 정합니다.
