@@ -92,3 +92,7 @@ To place both cards on one row, wrap the two images in the same paragraph and ke
 ## Source data and font
 
 Language metadata and representative colors come from GitHub Linguist 9.7.0. The embedded pixel typeface is [NeoDunggeunmo Pro](https://github.com/neodgm/neodgm-pro-webfont), pinned to webfont-kit commit `1751c2981808869750c7df391c1d2b486e978f12`. Their license texts are included in `third_party/`.
+
+## License
+
+The project's source code is released under the [MIT License](LICENSE). The embedded NeoDunggeunmo Pro typeface (SIL Open Font License 1.1) and GitHub Linguist language data (MIT) keep their own licenses; see [`third_party/README.md`](third_party/README.md) for what each license covers.
