@@ -9,7 +9,7 @@
 | `src/hosting/refresh-policy.ts` | 갱신 간격과 due 사용자 선정(SSOT) |
 | `src/hosting/refresh-job.ts` | 사용자 한 명의 batch 수집 → 발행 → 다음 job 시작 |
 | `src/hosting/refresh-dependencies.ts` | Blob store·GitHub token으로 운영 의존성 조립 |
-| `src/hosting/bootstrap.ts` | pending 카드 요청의 background batch 한도 |
+| `src/hosting/bootstrap.ts` | pending 카드 요청의 등록과 background batch 한도 |
 | `src/hosting/cron-run.ts` | Cron 한 번의 due 사용자 순회와 예산 |
 | `src/hosting/cron-response.ts` | Cron 인증과 응답 |
 | `src/hosting/invocation-deadline.ts` | 예산과 Function 종료 시각으로 background deadline 계산 |
@@ -42,12 +42,11 @@
 
 ## bootstrap
 
-- 카드 route가 `pending`(manifest 없음)으로 응답할 때만 `waitUntil()`로 background batch를 1회 예약합니다. `ready`·`invalid-username`·`unavailable` 응답과 GitHub token 또는 Blob store가 설정되지 않은 환경에서는 예약하지 않습니다. 응답 본문과 헤더는 HOST-07과 같습니다.
+- 카드 route가 `pending`(manifest 없음, 등록됐거나 등록 상한에 여유)으로 응답할 때만 `waitUntil()`로 background batch를 1회 예약합니다. bootstrap은 수집 전에 등록 기록에 등록하며, 카드 요청이 읽은 뒤 다른 요청이 마지막 자리를 가져갔으면 GitHub 요청 없이 끝납니다([`abuse-defense.md`](./abuse-defense.md)). `ready`·`failed`·`capacity`·`invalid-username`·`unavailable` 응답과 GitHub token 또는 Blob store가 설정되지 않은 환경에서는 예약하지 않습니다. 응답 본문과 헤더는 HOST-07과 같습니다.
 - 한도는 요청당 `BOOTSTRAP_BUDGET_MS`(20초)와 GitHub 요청 `BOOTSTRAP_MAX_REQUESTS`(20회)입니다. deadline은 Function 종료 시각보다 2초 앞당깁니다. 한 번에 수집이 끝나면 같은 실행에서 발행하고, 끝나지 않으면 checkpoint에 저장해 다음 카드 요청이나 Cron이 이어서 수집합니다.
-- `failed`가 된 수집은 bootstrap에서 다시 시작하지 않습니다(`resumeFailed: false`). 존재하지 않는 사용자처럼 실패하는 요청이 반복돼도 GitHub API를 다시 호출하지 않으며, 재시도는 Cron이 맡습니다. rate limit과 일시 오류는 `failed`가 아니라 `paused`이므로 대기 시각이 지난 다음 카드 요청에서 이어집니다.
+- `failed`가 된 수집은 bootstrap에서 다시 시작하지 않고(`resumeFailed: false`) 등록 기록에 실패를 표시합니다. 이후 카드 요청은 bootstrap을 예약하지 않고 cache되는 `failed` 상태 SVG를 받습니다. 존재하지 않는 사용자처럼 실패하는 요청이 반복돼도 GitHub API를 다시 호출하지 않으며, 재시도는 Cron이 맡습니다. rate limit과 일시 오류는 `failed`가 아니라 `paused`이므로 대기 시각이 지난 다음 카드 요청에서 이어집니다.
 - manifest가 생긴 뒤에는 카드 요청으로 수집하지 않습니다.
 - 오류는 메시지만 Function 로그에 남기고 응답에는 영향을 주지 않습니다.
-- 카드 요청으로 생긴 checkpoint가 곧 등록입니다. 신규 사용자 수 상한, 실패한 사용자 negative cache, WAF는 HOST-10에서 다룹니다.
 
 ## Cron
 
@@ -62,9 +61,10 @@
   | GET이 아닌 요청 | 405 |
   | Blob 목록 조회 실패 | 500 |
 
-- 대상은 private store의 `checkpoints/`, `manifests/` 목록만으로 고르며 본문은 읽지 않습니다. manifest가 20시간 이상 교체되지 않은 발행 사용자를 오래된 순으로 먼저, 그다음 manifest가 없는 사용자(bootstrap 미완료)를 처리합니다. 카드 URL만으로 생긴 checkpoint가 실패를 반복하더라도 이미 카드를 쓰는 사용자의 갱신 예산을 먼저 쓰지 않게 하기 위한 순서입니다.
+- 대상은 private store의 `checkpoints/`, `manifests/` 목록으로 고르며 checkpoint·manifest 본문은 읽지 않습니다. 미발행 사용자의 순서를 정할 때만 등록 기록 하나를 함께 읽습니다. manifest가 20시간 이상 교체되지 않은 발행 사용자를 오래된 순으로 먼저, 그다음 manifest가 없는 사용자(bootstrap 미완료)를 처리합니다. 카드 URL만으로 생긴 checkpoint가 실패를 반복하더라도 이미 카드를 쓰는 사용자의 갱신 예산을 먼저 쓰지 않게 하기 위한 순서입니다.
 - 실행 전체 예산은 280초입니다(`maxDuration` 300초, 종료 시각보다 10초 앞당김). GitHub 요청 상한은 실행당 1,000회, 사용자당 시간은 60초입니다. 남은 시간이 발행 여유를 포함해 15초보다 적거나 요청 상한에 도달하면 멈춥니다. 한 사용자의 batch가 GitHub rate limit으로 멈춰도 같은 token을 쓰는 나머지 사용자를 처리하지 않고 멈춥니다. 남은 사용자는 다음 실행이 이어받습니다. 요청 수는 GitHub 요청마다 세므로, 발행이나 저장소 오류로 끝난 사용자가 보낸 요청도 상한에 포함됩니다.
 - 사용자 한 명의 저장소·발행 오류는 집계하고 다음 사용자로 넘어갑니다.
+- 시작할 때 등록 기록을 읽어 실패 표시된 미발행 사용자를 다른 미발행 사용자 뒤에 둡니다. 루프가 끝나면 한 번의 쓰기로 manifest가 있거나 이번에 발행한 사용자의 실패 표시를 지우고, 이번에 발행 없이 `failed`가 된 등록 사용자에 실패를 표시합니다. 등록 기록 읽기·쓰기는 한 번에 5초 안에서만 실행하며, 실패해도 갱신과 발행은 계속되고 `errors`에 집계합니다([`abuse-defense.md`](./abuse-defense.md)).
 - 응답 JSON에는 집계 수치만 담습니다: `due`, `processed`, `published`, `requests`, `errors`, 상태별 개수, 종료 이유(`complete`, `deadline`, `requests`, `rate-limit`). 사용자명과 오류 메시지는 넣지 않습니다.
 - Cron 전달은 누락되거나 중복되거나 겹칠 수 있습니다. 매 실행이 목록에서 대상을 다시 고르고 checkpoint lease와 manifest 조건부 교체에 기대므로, 겹친 실행도 사용자별로 한 번만 발행합니다. 누락된 실행은 다음 실행에서 due 판정으로 회복합니다. 실패한 invocation은 Vercel이 재시도하지 않습니다.
 
