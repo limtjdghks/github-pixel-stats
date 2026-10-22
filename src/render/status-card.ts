@@ -2,7 +2,7 @@ import { LANGUAGES_CARD, STATS_CARD } from "../config.js";
 import { renderFrame, renderFrameDefs } from "./frame.js";
 import { escapeXml, renderFontStyles } from "./shared.js";
 
-export type CardStatus = "pending" | "invalid-username" | "unavailable" | "failed" | "capacity";
+export type CardStatus = "pending" | "invalid-username" | "unavailable" | "failed" | "capacity" | "removed";
 
 const STATUS_TEXT: Record<CardStatus, { heading: string; lines: [string, string] }> = {
   pending: { heading: "PREPARING", lines: ["Stats are not ready yet.", "Check back after an update."] },
@@ -10,6 +10,7 @@ const STATUS_TEXT: Record<CardStatus, { heading: string; lines: [string, string]
   unavailable: { heading: "UNAVAILABLE", lines: ["Stats are temporarily", "unavailable."] },
   failed: { heading: "NO STATS", lines: ["Stats could not be built", "for this GitHub user."] },
   capacity: { heading: "AT CAPACITY", lines: ["New cards are paused.", "Please try again later."] },
+  removed: { heading: "REMOVED", lines: ["Stats for this user", "have been removed."] },
 };
 
 /**

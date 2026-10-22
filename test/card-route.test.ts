@@ -3,7 +3,7 @@ import test from "node:test";
 import card from "../api/card.js";
 import { LANGUAGES_CARD, STATS_CARD } from "../src/config.js";
 import { LinguistClassifier } from "../src/data/linguist.js";
-import { NEW_USER_LIMIT, NEW_USER_WINDOW_MS, admitUser, markAdmissionFailures } from "../src/hosting/admission-policy.js";
+import { NEW_USER_LIMIT, NEW_USER_WINDOW_MS, admitUser, markAdmissionFailures, markUserRemoved } from "../src/hosting/admission-policy.js";
 import { canonicalCardPath } from "../src/hosting/card-request.js";
 import { cardResponse } from "../src/hosting/card-response.js";
 import type { CollectionResult } from "../src/model.js";
@@ -376,7 +376,8 @@ test("unpublished users receive a status from the admission record without any w
     let next = admitUser(current, "ghost", now)!;
     next = markAdmissionFailures(next, ["ghost"], now)!;
     for (let index = 1; index < NEW_USER_LIMIT; index += 1) next = admitUser(next, `user${index}`, now)!;
-    return next;
+    // 삭제 표시는 상한에 세지 않으므로 신규 등록 5명 상한이 그대로 `capacity`를 만듭니다.
+    return markUserRemoved(next, "gone", now)!;
   });
   forbidWrites(privateStore, publicStore);
   const stores = { privateStore, publicStore };
@@ -388,6 +389,8 @@ test("unpublished users receive a status from the admission record without any w
     ["/ghost/languages.svg", "failed", "no-store", "max-age=3600", /NO STATS/, LANGUAGES_CARD],
     ["/new-user/stats.svg", "capacity", "no-store", "max-age=600", /AT CAPACITY/, STATS_CARD],
     ["/new-user/languages.svg", "capacity", "no-store", "max-age=600", /AT CAPACITY/, LANGUAGES_CARD],
+    ["/gone/stats.svg", "removed", "no-store", "max-age=3600", /REMOVED/, STATS_CARD],
+    ["/gone/languages.svg", "removed", "no-store", "max-age=3600", /REMOVED/, LANGUAGES_CARD],
   ] as const;
   for (const [path, status, cacheControl, cdn, text, size] of cases) {
     const response = await cardResponse(get(path), stores, options);

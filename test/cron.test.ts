@@ -65,7 +65,7 @@ test("an authorized cron run bootstraps registered users and reports only aggreg
   assert.equal(response.status, 200);
   const body = await response.json() as Record<string, unknown>;
   assert.deepEqual({ ...body, requests: undefined, blob: undefined }, {
-    status: "ok", due: 2, processed: 2, published: 2, requests: undefined, errors: 0,
+    status: "ok", due: 2, processed: 2, published: 2, requests: undefined, errors: 0, publishFailures: 0, expired: 0,
     statuses: { paused: 0, busy: 0, conflict: 0, failed: 0, ready: 2 }, stopped: "complete", blob: undefined,
   });
   const blob = body.blob as { operations: { advanced: number }; dailyAdvanced: number; dailyBudget: number };

@@ -34,6 +34,7 @@ const URL_DETERMINED_CACHE_HEADERS = {
  * 회복 뒤 바로 바뀌도록 브라우저·이미지 proxy에는 cache하지 않게 합니다. `no-store`와 함께 쓴
  * `Vercel-CDN-Cache-Control`이 실제로 cache되는지는 HOST-13 staging에서 확인합니다.
  * 발행된 사용자는 manifest를 먼저 읽어 `ready`가 되므로, 발행 카드의 CDN 항목이 이 상태로 바뀌지 않습니다.
+ * `removed`는 운영자가 해제하기 전까지 바뀌지 않지만, 해제 뒤 오래 남지 않도록 `failed`와 같이 짧게 둡니다.
  */
 const STATUS_CACHE_HEADERS: Record<CardStatus, Readonly<Record<string, string>>> = {
   pending: { "Cache-Control": "no-store" },
@@ -41,6 +42,7 @@ const STATUS_CACHE_HEADERS: Record<CardStatus, Readonly<Record<string, string>>>
   "invalid-username": URL_DETERMINED_CACHE_HEADERS,
   failed: { "Cache-Control": "no-store", "Vercel-CDN-Cache-Control": "max-age=3600" },
   capacity: { "Cache-Control": "no-store", "Vercel-CDN-Cache-Control": "max-age=600" },
+  removed: { "Cache-Control": "no-store", "Vercel-CDN-Cache-Control": "max-age=3600" },
 };
 
 /** 발행 카드가 없는 사용자의 등록 상태를 응답할 상태 SVG로 바꿉니다. */
@@ -49,6 +51,7 @@ const UNPUBLISHED_STATUS: Record<AdmissionDecision, CardStatus> = {
   open: "pending",
   failed: "failed",
   capacity: "capacity",
+  removed: "removed",
 };
 
 /**
@@ -112,8 +115,8 @@ export interface CardResponseOptions {
  * 카드 URL 요청에 마지막으로 발행된 카드 또는 상태 SVG로 응답합니다. 응답 경로는 저장소에 쓰지 않습니다.
  * README 이미지 proxy가 오류 응답을 그리지 않으므로 상태 SVG도 200으로 응답하고 상태는 헤더로 구분합니다.
  * 사용자명이 올바른 비정규 URL은 저장소를 읽지 않고 정규 경로로 308 redirect합니다.
- * manifest가 없으면 등록 기록을 읽어 `pending`(등록됨 또는 상한 여유), `failed`(수집 실패 표시), `capacity`(상한 도달)
- * 중 하나로 응답합니다. 등록 자체는 `onPending`이 예약한 bootstrap이 합니다.
+ * manifest가 없으면 등록 기록을 읽어 `pending`(등록됨 또는 상한 여유), `failed`(수집 실패 표시), `capacity`(상한 도달),
+ * `removed`(운영자 삭제 표시) 중 하나로 응답합니다. 등록 자체는 `onPending`이 예약한 bootstrap이 합니다.
  * `stores`가 없으면(Blob store 미설정) 형식이 올바른 카드 요청은 모두 `unavailable`입니다.
  * 저장소 읽기가 `timeoutMs` 안에 끝나지 않으면 `unavailable`로 응답합니다.
  */
