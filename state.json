@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-10-24T20:54:59.000Z",
+  "updatedAt": "2026-10-25T20:55:28.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -6027,11 +6027,74 @@
       "authoredAt": "2026-09-26T19:50:07.000+09:00",
       "languages": []
     },
+    "1389018883:146b1d2194a9d7890d037d945ea5ce9991317220": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "146b1d2194a9d7890d037d945ea5ce9991317220",
+      "authoredAt": "2026-10-13T19:34:49.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:2fb2a3e5eb0b0212a10f09c899bda2b5e5c9632c": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "2fb2a3e5eb0b0212a10f09c899bda2b5e5c9632c",
+      "authoredAt": "2026-10-13T21:13:13.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:31020acf558d500316a300bc902ca65de6546d8f": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "31020acf558d500316a300bc902ca65de6546d8f",
+      "authoredAt": "2026-10-12T21:07:45.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:3263492f138c271dc1d6474d4c57d0cee8aa5b83": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "3263492f138c271dc1d6474d4c57d0cee8aa5b83",
+      "authoredAt": "2026-10-13T00:48:17.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:375c0ff5435a61f5d29fe19d0483a26e51355828": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "375c0ff5435a61f5d29fe19d0483a26e51355828",
+      "authoredAt": "2026-10-13T00:45:41.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:3f66aa1c7f259035cc9438fdeacaa004c6452b9b": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "3f66aa1c7f259035cc9438fdeacaa004c6452b9b",
+      "authoredAt": "2026-10-13T00:13:01.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
     "1389018883:401752422a60cfe6ec3af04edd84726efddb5f73": {
       "repositoryId": 1389018883,
       "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
       "sha": "401752422a60cfe6ec3af04edd84726efddb5f73",
       "authoredAt": "2026-10-11T23:28:59.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:48b5c04f9af26754a2b66b281139b0facdb8e03e": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "48b5c04f9af26754a2b66b281139b0facdb8e03e",
+      "authoredAt": "2026-10-13T00:48:25.000+09:00",
       "languages": [
         "Swift"
       ]
@@ -6050,6 +6113,119 @@
       "authoredAt": "2026-09-26T20:00:35.000+09:00",
       "languages": [
         "Other"
+      ]
+    },
+    "1389018883:60dc423e68617651ab4888ada10044200083f46c": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "60dc423e68617651ab4888ada10044200083f46c",
+      "authoredAt": "2026-10-13T02:49:05.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:639d9d63df1778912a2019dc6060ab4ece9fb239": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "639d9d63df1778912a2019dc6060ab4ece9fb239",
+      "authoredAt": "2026-10-13T00:50:05.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:676b069d0b83ac74aa199e6e14b54a3e8b48720c": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "676b069d0b83ac74aa199e6e14b54a3e8b48720c",
+      "authoredAt": "2026-10-13T00:45:57.000+09:00",
+      "languages": []
+    },
+    "1389018883:69902069cd0e7177b4360b1c82ceaa307e0e5a4d": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "69902069cd0e7177b4360b1c82ceaa307e0e5a4d",
+      "authoredAt": "2026-10-11T23:55:01.000+09:00",
+      "languages": []
+    },
+    "1389018883:793da9da901bcae368c4c084a41fd64bd4ac86b8": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "793da9da901bcae368c4c084a41fd64bd4ac86b8",
+      "authoredAt": "2026-10-13T02:17:43.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:890c05bad348f1393494ac295262b2f921ad7989": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "890c05bad348f1393494ac295262b2f921ad7989",
+      "authoredAt": "2026-10-12T21:07:25.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:9a7c560a2a806ef5b5940588c9353192dc6cd58d": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "9a7c560a2a806ef5b5940588c9353192dc6cd58d",
+      "authoredAt": "2026-10-25T13:07:11.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:a14c9591f4743fc1d1804098b84be3d118b2e283": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "a14c9591f4743fc1d1804098b84be3d118b2e283",
+      "authoredAt": "2026-10-13T02:07:15.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:af9dda85e98019f6d2670667a2deee3454d25156": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "af9dda85e98019f6d2670667a2deee3454d25156",
+      "authoredAt": "2026-10-12T21:02:14.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:da87503088e80eea6ae76230589316ea5918990a": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "da87503088e80eea6ae76230589316ea5918990a",
+      "authoredAt": "2026-10-13T02:18:15.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:db036a07a5f8fe8ffe1e0f8b95f909c61f3b35da": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "db036a07a5f8fe8ffe1e0f8b95f909c61f3b35da",
+      "authoredAt": "2026-10-13T20:52:28.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:dfd3deef139e6cd3274903c531e641ad51e6e610": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "dfd3deef139e6cd3274903c531e641ad51e6e610",
+      "authoredAt": "2026-10-13T20:50:40.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389018883:f820a51a3c04a319d4f335c21f60e935a17c9e93": {
+      "repositoryId": 1389018883,
+      "repository": "39-play-sopt-ios/LimSeongHwan-assignment",
+      "sha": "f820a51a3c04a319d4f335c21f60e935a17c9e93",
+      "authoredAt": "2026-10-25T13:19:16.000+09:00",
+      "languages": [
+        "Swift"
       ]
     },
     "1389019930:3e5f4a592aa107682445cb6de88de98e32b9ee02": {
