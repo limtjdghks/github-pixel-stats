@@ -75,7 +75,7 @@ Nothing is rendered while your README loads, so the cards stay fast no matter ho
 <details>
 <summary><b>What counts as a commit?</b></summary>
 
-Commits authored by you in public repositories during the last 12 months, on each repository's default branch. Stars count only repositories you own that are not forks.
+Commits authored by you in public repositories during the last 12 months, on each repository's default branch. Stars count only repositories you own that are not forks. If GitHub refuses to show a commit's changed files (for example, because the repository's organization restricts token access, or the commit was removed), the commit still counts but adds no language.
 </details>
 
 <details>

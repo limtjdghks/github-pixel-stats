@@ -56,10 +56,15 @@ function searchedCommits(value: unknown, from: number, to: number): SearchCommit
 
 function readMetrics(value: unknown): CollectionMetrics {
   const metrics = record(value, "metrics");
+  const fetchedCommits = integer(metrics.fetchedCommits, "fetched metric");
+  // `skippedCommits`가 생기기 전에 저장된 checkpoint는 건너뛴 커밋이 없었으므로 0으로 읽습니다.
+  const skippedCommits = metrics.skippedCommits === undefined ? 0 : integer(metrics.skippedCommits, "skipped metric");
+  requireValue(skippedCommits <= fetchedCommits, "skipped metric");
   return {
     searchedCommits: integer(metrics.searchedCommits, "searched metric"),
     cacheHits: integer(metrics.cacheHits, "cache metric"),
-    fetchedCommits: integer(metrics.fetchedCommits, "fetched metric"),
+    fetchedCommits,
+    skippedCommits,
     removedCommits: integer(metrics.removedCommits, "removed metric"),
   };
 }

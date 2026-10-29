@@ -47,6 +47,8 @@ export interface CronSummary {
   processed: number;
   published: number;
   requests: number;
+  /** 상세를 조회할 수 없어 언어 없이 저장한 커밋 수입니다(`CollectionMetrics.skippedCommits`). */
+  skippedCommits: number;
   errors: number;
   /** `errors` 중 수집이 끝난 결과의 발행이 실패한 수입니다. 같은 사용자가 매일 반복되면 결정적 실패일 수 있습니다. */
   publishFailures: number;
@@ -92,6 +94,7 @@ export async function runCron(limits: CronLimits, dependencies: RefreshDependenc
     processed: 0,
     published: 0,
     requests: 0,
+    skippedCommits: 0,
     errors: 0,
     publishFailures: 0,
     expired: 0,
@@ -180,6 +183,7 @@ async function refreshDueUsers(
         maxRequests: limits.maxRequests - requests,
       }, counted);
       summary.statuses[outcome.status] += 1;
+      summary.skippedCommits += outcome.skippedCommits;
       if (outcome.publish === "published") {
         summary.published += 1;
         published.push(username);

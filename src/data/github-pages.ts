@@ -97,6 +97,27 @@ export function getRateLimitDelay(response: Response, now = Date.now()): number 
   return null;
 }
 
+/** 대기 헤더가 없는 secondary rate limit에서 GitHub 문서가 권하는 최소 대기 시간입니다. */
+export const SECONDARY_RATE_LIMIT_WAIT_MS = 60_000;
+
+/**
+ * 대기 헤더 없는 403·429가 secondary rate limit인지 본문 `message`로 판정해 대기 시간을 돌려줍니다. 아니면 null입니다.
+ * GitHub은 secondary rate limit에 `retry-after`·`x-ratelimit-*`를 붙이지 않을 수 있습니다. 이를 권한 거부로 보면
+ * 커밋 상세를 건너뛰어(`isUnavailableCommitDetail()`) 언어 없는 결과가 cache되므로 rate limit으로 다룹니다.
+ */
+export async function secondaryRateLimitDelay(response: Response): Promise<number | null> {
+  if (response.status !== 403 && response.status !== 429) {
+    return null;
+  }
+  let message: unknown;
+  try {
+    message = (JSON.parse(await response.text()) as { message?: unknown }).message;
+  } catch {
+    return null;
+  }
+  return typeof message === "string" && /rate limit/i.test(message) ? SECONDARY_RATE_LIMIT_WAIT_MS : null;
+}
+
 /** `status`가 없으면 응답을 받기 전에 실패한 네트워크 오류입니다. */
 export class GitHubRequestError extends Error {
   constructor(message: string, readonly retryDelayMs: number | null, readonly status?: number, options?: ErrorOptions) {
@@ -123,6 +144,22 @@ export function retryDecision(error: unknown, transientAttempts: number): RetryD
     return { kind: "transient", delayMs };
   }
   return null;
+}
+
+/**
+ * 커밋 상세(`files`) 응답 중 다시 시도해도 결과가 같아 그 커밋의 언어 분류만 건너뛸 응답입니다.
+ * 403은 조직의 token 정책 등 권한 거부, 404는 검색 뒤 삭제·force-push된 커밋, 451은 법적 차단입니다.
+ */
+const UNAVAILABLE_COMMIT_DETAIL_STATUSES: ReadonlySet<number> = new Set([403, 404, 451]);
+
+/**
+ * 커밋 상세 요청의 오류가 그 커밋만 건너뛰고 수집을 계속할 오류인지 판정합니다.
+ * rate limit 403(`retryDelayMs`가 있음)은 기다리면 성공하므로 해당하지 않습니다.
+ * 프로필·저장소·검색 요청에는 쓰지 않습니다. 그 단계의 403·404는 사용자 전체의 실패입니다.
+ */
+export function isUnavailableCommitDetail(error: unknown): boolean {
+  return error instanceof GitHubRequestError && error.retryDelayMs === null &&
+    error.status !== undefined && UNAVAILABLE_COMMIT_DETAIL_STATUSES.has(error.status);
 }
 
 function pageUrl(request: PageRequest): URL {
@@ -227,7 +264,7 @@ export class GitHubRestPageSource implements GitHubPageSource {
         ? ` Rate limit resets at ${resetDate.toISOString()}.` : "";
       throw new GitHubRequestError(
         `GitHub API ${response.status} for ${url.pathname}.${resetHint}`,
-        getRateLimitDelay(response),
+        getRateLimitDelay(response) ?? await secondaryRateLimitDelay(response),
         response.status,
       );
     }

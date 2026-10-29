@@ -9,8 +9,8 @@ import {
   type CollectionCheckpoint,
 } from "./checkpoint-model.js";
 import { readCheckpoint } from "./checkpoint-validation.js";
-import { acceptPage, advanceWithoutRequest, nextPageRequest } from "./checkpoint-progress.js";
-import { retryDecision } from "./github-pages.js";
+import { acceptPage, advanceWithoutRequest, nextPageRequest, skipCommitDetail } from "./checkpoint-progress.js";
+import { isUnavailableCommitDetail, retryDecision } from "./github-pages.js";
 import { parseState } from "./state-validation.js";
 
 /**
@@ -75,7 +75,7 @@ function newCheckpoint(username: string, dependencies: BatchDependencies): Colle
     stateLoaded: false,
     searched: [],
     commits: {},
-    metrics: { searchedCommits: 0, cacheHits: 0, fetchedCommits: 0, removedCommits: 0 },
+    metrics: { searchedCommits: 0, cacheHits: 0, fetchedCommits: 0, skippedCommits: 0, removedCommits: 0 },
     result: null,
     error: null,
   };
@@ -103,12 +103,14 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
   const cutoff = deadline - options.checkpointReserveMs;
   const clock = () => dependencies.now().getTime();
   let requests = 0;
+  let skippedCommits = 0;
   let checkpoint: CollectionCheckpoint | null = null;
   let rateLimitedUntil: string | null = null;
   const response = (status: BatchResult["status"]): BatchResult => ({
     status,
     checkpoint,
     requests,
+    skippedCommits,
     result: status === "ready" ? checkpoint?.result ?? null : null,
     rateLimitedUntil: status === "paused" ? rateLimitedUntil : null,
   });
@@ -165,6 +167,7 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
     let lastSavedAt = clock();
     const saveInterval = options.checkpointIntervalMs ?? CHECKPOINT_SAVE_INTERVAL_MS;
     const initialFetched = checkpoint.metrics.fetchedCommits;
+    const initialSkipped = checkpoint.metrics.skippedCommits;
 
     const persist = async (release = false): Promise<void> => {
       if (!checkpoint || clock() >= deadline || hardDeadline.signal.aborted) {
@@ -186,6 +189,8 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
       }
       revision = nextRevision;
       lastSaved = structuredClone(checkpoint);
+      // 저장된 진행만 셉니다. 저장 전 건너뛰기는 충돌·실패 시 `lastSaved`로 되돌아가 다음 실행이 다시 건너뜁니다.
+      skippedCommits = lastSaved.metrics.skippedCommits - initialSkipped;
       lastSavedAt = clock();
     };
 
@@ -262,6 +267,12 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
             checkpoint.retry.nextAttemptAt = new Date(clock() + retry.delayMs).toISOString();
             if (retry.kind === "rate-limit") rateLimitedUntil = checkpoint.retry.nextAttemptAt;
             return await pause();
+          }
+          if (request.kind === "files" && isUnavailableCommitDetail(error)) {
+            skipCommitDetail(checkpoint);
+            checkpoint.retry = { attempts: 0, nextAttemptAt: null };
+            await saveProgress();
+            continue;
           }
           throw error;
         }

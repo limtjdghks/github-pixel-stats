@@ -158,3 +158,22 @@ export function acceptPage(checkpoint: CollectionCheckpoint, page: PageResult, c
   }
   throw new Error("GitHub page does not match the current collection stage.");
 }
+
+/**
+ * 상세 cursor의 커밋을 언어 없이 저장하고 다음 커밋으로 넘어갑니다. 이미 받은 파일 page는 버립니다.
+ * `isUnavailableCommitDetail()`인 오류에만 쓰며, 순차 수집(`collectStats()`)과 같은 결과를 냅니다.
+ */
+export function skipCommitDetail(checkpoint: CollectionCheckpoint): void {
+  const cursor = checkpoint.cursor;
+  if (cursor.stage !== "details") {
+    throw new Error("Only a commit detail can be skipped.");
+  }
+  const commit = checkpoint.searched[cursor.index];
+  if (!commit) {
+    throw new Error("Detail cursor has no commit.");
+  }
+  checkpoint.commits[commitKey(commit)] = { ...commit, languages: [] };
+  checkpoint.metrics.fetchedCommits += 1;
+  checkpoint.metrics.skippedCommits += 1;
+  checkpoint.cursor = { stage: "details", index: cursor.index + 1, page: 1, filenames: [], fileCount: 0 };
+}

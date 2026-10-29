@@ -28,6 +28,7 @@ async function captureLines(run: () => Promise<void>): Promise<string[]> {
 test("card, bootstrap, and cron logs are single-line JSON events without usernames or secrets", async () => {
   const f = refreshFixture();
   f.missing.add("ghost-user");
+  f.blockedDetails.add("alpha-user");
   const lines = await captureLines(async () => {
     await cardResponse(new Request("https://example.test/Alpha-User/stats.svg"), f.dependencies.stores);
     await cardResponse(new Request("https://example.test/alpha-user/stats.svg"), f.dependencies.stores);
@@ -54,7 +55,7 @@ test("card, bootstrap, and cron logs are single-line JSON events without usernam
     ["stats", "redirect"], ["stats", "pending"], ["languages", "ready"],
   ]);
   const bootstraps = events.filter((event) => event.event === "bootstrap.completed");
-  assert.deepEqual(bootstraps.map(({ status }) => status), ["ready", "failed"]);
+  assert.deepEqual(bootstraps.map(({ status, skippedCommits }) => [status, skippedCommits]), [["ready", 2], ["failed", 0]]);
   for (const event of bootstraps) {
     assert.equal(typeof event.blobAdvanced, "number");
     assert.ok((event.requests as number) > 0);
@@ -62,6 +63,7 @@ test("card, bootstrap, and cron logs are single-line JSON events without usernam
   const cron = events.find((event) => event.event === "cron.completed");
   assert.equal(cron?.level, "info");
   assert.equal(cron?.published, 1);
+  assert.equal(cron?.skippedCommits, 0);
   assert.equal(typeof cron?.blobAdvanced, "number");
   assert.equal(cron?.dailyBudget, 60);
 });

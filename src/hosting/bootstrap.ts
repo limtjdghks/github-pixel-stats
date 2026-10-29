@@ -73,7 +73,8 @@ export async function bootstrapUser(username: string, deadline: Date, dependenci
       }
       // `blobAdvanced`는 사용량 기록 쓰기를 뺀 이 실행의 작업 수로, job 추정치(`JOB_ADVANCED_ESTIMATE`)를 실측하는 데 씁니다.
       logEvent("bootstrap.completed", {
-        status: outcome.status, publish: outcome.publish, requests: run.requests, blobAdvanced: operations.advanced,
+        status: outcome.status, publish: outcome.publish, requests: run.requests, skippedCommits: outcome.skippedCommits,
+        blobAdvanced: operations.advanced,
       });
     });
   } catch (error) {

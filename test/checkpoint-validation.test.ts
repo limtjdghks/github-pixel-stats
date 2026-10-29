@@ -17,7 +17,7 @@ function checkpoint(): CollectionCheckpoint {
     status: "pending", cursor: { stage: "profile" }, attempt: 0, lease: null,
     nextRefreshAt: null, retry: { attempts: 0, nextAttemptAt: null },
     profile: null, previous: null, stateLoaded: false, searched: [], commits: {},
-    metrics: { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, removedCommits: 0 },
+    metrics: { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, skippedCommits: 0, removedCommits: 0 },
     result: null, error: null,
   };
 }
@@ -137,7 +137,7 @@ test("checkpoint decoder accepts saved partial search and file pagination", () =
   };
   value.searched = [];
   value.commits = {};
-  value.metrics = { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, removedCommits: 0 };
+  value.metrics = { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, skippedCommits: 0, removedCommits: 0 };
   value.retry = { attempts: 2, nextAttemptAt: "2026-09-27T00:00:30Z" };
   assert.deepEqual(readCheckpoint(value, value.username), value);
 
@@ -148,11 +148,23 @@ test("checkpoint decoder accepts saved partial search and file pagination", () =
   assert.deepEqual(readCheckpoint(partial, partial.username), partial);
 });
 
+test("checkpoint decoder reads a missing skipped metric as zero and rejects more skips than fetches", () => {
+  const value = details();
+  const { skippedCommits: _, ...older } = value.metrics;
+  assert.deepEqual(readCheckpoint({ ...value, metrics: older }, value.username), value);
+
+  const skipped = details();
+  skipped.commits = { [`1:${skipped.searched[0]!.sha}`]: { ...skipped.searched[0]!, languages: [] } };
+  skipped.metrics.skippedCommits = 1;
+  assert.deepEqual(readCheckpoint(skipped, skipped.username), skipped);
+  assert.throws(() => readCheckpoint({ ...skipped, metrics: { ...skipped.metrics, skippedCommits: 2 } }, skipped.username));
+});
+
 test("checkpoint decoder rejects overlapping and out-of-period search intervals", () => {
   const value = details();
   value.commits = {};
   value.searched = [];
-  value.metrics = { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, removedCommits: 0 };
+  value.metrics = { searchedCommits: 0, fetchedCommits: 0, cacheHits: 0, skippedCommits: 0, removedCommits: 0 };
   const from = Date.parse(value.period.from);
   const to = Date.parse(value.period.to);
   for (const cursor of [

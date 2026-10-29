@@ -84,6 +84,8 @@ export interface BatchResult {
   status: "paused" | "busy" | "conflict" | "failed" | "ready";
   checkpoint: CollectionCheckpoint | null;
   requests: number;
+  /** 이번 batch에서 상세를 조회할 수 없어 언어 없이 저장한 커밋 수입니다. checkpoint 저장에 반영된 것만 셉니다. */
+  skippedCommits: number;
   result: CollectionResult | null;
   /** 이번 batch가 GitHub rate limit으로 멈췄으면 재시도 가능 시각입니다. 같은 token의 다른 작업도 이때까지 기다리는 것이 좋습니다. */
   rateLimitedUntil: string | null;

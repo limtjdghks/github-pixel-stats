@@ -1,4 +1,4 @@
-import type { PageRequest, PageResult } from "../../src/data/github-pages.js";
+import { GitHubRequestError, type PageRequest, type PageResult } from "../../src/data/github-pages.js";
 import { LinguistClassifier } from "../../src/data/linguist.js";
 import type { RefreshDependencies } from "../../src/hosting/refresh-job.js";
 import type { SearchCommit } from "../../src/model.js";
@@ -14,6 +14,7 @@ const classifierPromise = LinguistClassifier.loadDefault();
  * 갱신 job·Cron·bootstrap 테스트용 운영 구성과 같은 의존성입니다.
  * 저장소는 in-memory adapter이고 GitHub는 사용자마다 commit 2개를 돌려주는 fake page source입니다.
  * `missing`에 넣은 사용자는 profile 요청이 404로 실패합니다.
+ * `blockedDetails`에 넣은 사용자는 커밋 상세 요청이 rate limit이 아닌 403이라 모든 커밋이 언어 없이 저장됩니다.
  */
 export function refreshFixture() {
   const clock = { now: REFRESH_NOW };
@@ -22,6 +23,7 @@ export function refreshFixture() {
   const publicStore = new MemoryObjectStore("public", now);
   const calls: PageRequest[] = [];
   const missing = new Set<string>();
+  const blockedDetails = new Set<string>();
   let serial = 0;
   const commitsFor = (username: string): SearchCommit[] => [1, 2].map((index) => ({
     repositoryId: 1,
@@ -40,7 +42,11 @@ export function refreshFixture() {
           .filter((commit) => Date.parse(commit.authoredAt) >= request.from && Date.parse(commit.authoredAt) <= request.to);
         return { kind: "search", commits: found, totalCount: found.length, incomplete: false, hasNext: false };
       }
-      case "files": return { kind: "files", filenames: ["src/main.ts"], fileCount: 1, hasNext: false };
+      case "files":
+        if (blockedDetails.has(request.repository.split("/")[0]!.toLowerCase())) {
+          throw new GitHubRequestError("GitHub API 403 for /repos.", null, 403);
+        }
+        return { kind: "files", filenames: ["src/main.ts"], fileCount: 1, hasNext: false };
     }
   };
   // 운영 구성처럼 갱신 의존성의 저장소만 작업을 셉니다. 테스트가 직접 읽는 `privateStore`·`publicStore`는 세지 않습니다.
@@ -60,5 +66,5 @@ export function refreshFixture() {
     now,
     newId: () => `id-${++serial}`,
   };
-  return { clock, privateStore, publicStore, calls, missing, dependencies };
+  return { clock, privateStore, publicStore, calls, missing, blockedDetails, dependencies };
 }

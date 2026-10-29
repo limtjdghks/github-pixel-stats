@@ -16,9 +16,16 @@ function limits(now: number, overrides: { maxRequests?: number; resumeFailed?: b
 test("first refresh collects and publishes in one job", async () => {
   const f = refreshFixture();
   const outcome = await runRefreshJob("Fixture-User", limits(REFRESH_NOW), f.dependencies);
-  assert.deepEqual(outcome, { status: "ready", publish: "published", requests: f.calls.length, rateLimited: false });
+  assert.deepEqual(outcome, { status: "ready", publish: "published", requests: f.calls.length, skippedCommits: 0, rateLimited: false });
   const stored = await readManifest(f.privateStore, "fixture-user");
   assert.equal(stored?.manifest.current.generatedAt, new Date(REFRESH_NOW).toISOString());
+});
+
+test("a refresh reports the commit details it skipped and still publishes", async () => {
+  const f = refreshFixture();
+  f.blockedDetails.add("fixture-user");
+  const outcome = await runRefreshJob("fixture-user", limits(REFRESH_NOW), f.dependencies);
+  assert.deepEqual(outcome, { status: "ready", publish: "published", requests: f.calls.length, skippedCommits: 2, rateLimited: false });
 });
 
 test("a ready but unpublished result is published before any new collection", async () => {
@@ -46,7 +53,7 @@ test("a fresh published result is not collected again", async () => {
   const count = f.calls.length;
   f.clock.now += REFRESH_INTERVAL_MS - 1;
   const outcome = await runRefreshJob("fixture-user", limits(f.clock.now), f.dependencies);
-  assert.deepEqual(outcome, { status: "ready", publish: "unchanged", requests: 0, rateLimited: false });
+  assert.deepEqual(outcome, { status: "ready", publish: "unchanged", requests: 0, skippedCommits: 0, rateLimited: false });
   assert.equal(f.calls.length, count);
 });
 
@@ -82,7 +89,7 @@ test("resumeFailed false leaves a failed collection without GitHub requests", as
   assert.equal((await runRefreshJob("ghost", limits(REFRESH_NOW), f.dependencies)).status, "failed");
   const count = f.calls.length;
   const outcome = await runRefreshJob("ghost", limits(REFRESH_NOW, { resumeFailed: false }), f.dependencies);
-  assert.deepEqual(outcome, { status: "failed", publish: null, requests: 0, rateLimited: false });
+  assert.deepEqual(outcome, { status: "failed", publish: null, requests: 0, skippedCommits: 0, rateLimited: false });
   assert.equal(f.calls.length, count);
 });
 
@@ -91,7 +98,7 @@ test("the batch stops early enough to leave time for publishing", async () => {
   const outcome = await runRefreshJob("fixture-user", {
     deadline: new Date(REFRESH_NOW + PUBLISH_RESERVE_MS), maxRequests: 100,
   }, f.dependencies);
-  assert.deepEqual(outcome, { status: "paused", publish: null, requests: 0, rateLimited: false });
+  assert.deepEqual(outcome, { status: "paused", publish: null, requests: 0, skippedCommits: 0, rateLimited: false });
   assert.equal(f.calls.length, 0);
 });
 
@@ -132,5 +139,5 @@ test("a rate-limited batch is reported so callers can stop using the same token"
   const f = refreshFixture();
   f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("rate limited", 30 * 60_000, 403); };
   const outcome = await runRefreshJob("fixture-user", limits(REFRESH_NOW), f.dependencies);
-  assert.deepEqual(outcome, { status: "paused", publish: null, requests: 1, rateLimited: true });
+  assert.deepEqual(outcome, { status: "paused", publish: null, requests: 1, skippedCommits: 0, rateLimited: true });
 });

@@ -65,7 +65,7 @@ test("an authorized cron run bootstraps registered users and reports only aggreg
   assert.equal(response.status, 200);
   const body = await response.json() as Record<string, unknown>;
   assert.deepEqual({ ...body, requests: undefined, blob: undefined }, {
-    status: "ok", due: 2, processed: 2, published: 2, requests: undefined, errors: 0, publishFailures: 0, expired: 0,
+    status: "ok", due: 2, processed: 2, published: 2, requests: undefined, skippedCommits: 0, errors: 0, publishFailures: 0, expired: 0,
     statuses: { paused: 0, busy: 0, conflict: 0, failed: 0, ready: 2 }, stopped: "complete", blob: undefined,
   });
   const blob = body.blob as { operations: { advanced: number }; dailyAdvanced: number; dailyBudget: number };
@@ -76,6 +76,17 @@ test("an authorized cron run bootstraps registered users and reports only aggreg
   for (const username of ["alpha", "beta"]) {
     assert.ok(await readManifest(f.privateStore, username));
   }
+});
+
+test("a cron run sums the commit details skipped across users", async () => {
+  const f = refreshFixture();
+  await register(f, "alpha", "beta");
+  f.blockedDetails.add("alpha");
+  f.blockedDetails.add("beta");
+  const response = await cronResponse(cronRequest(`Bearer ${SECRET}`), { secret: SECRET, dependencies: f.dependencies }, () => limits(f.clock.now));
+  const body = await response.json() as { published: number; skippedCommits: number };
+  assert.equal(body.published, 2);
+  assert.equal(body.skippedCommits, 4);
 });
 
 test("repeated and next-day cron runs are idempotent until the refresh interval passes", async () => {

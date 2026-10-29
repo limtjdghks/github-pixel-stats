@@ -24,7 +24,7 @@ async function result(minutesLater = 0): Promise<CollectionResult> {
   snapshot.generatedAt = new Date(Date.parse(snapshot.generatedAt) + minutesLater * 60_000).toISOString();
   return {
     snapshot, nextState: state, stateChanged: true,
-    metrics: { searchedCommits: 0, cacheHits: 0, fetchedCommits: 0, removedCommits: 0 },
+    metrics: { searchedCommits: 0, cacheHits: 0, fetchedCommits: 0, skippedCommits: 0, removedCommits: 0 },
   };
 }
 
