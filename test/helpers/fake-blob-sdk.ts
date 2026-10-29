@@ -13,6 +13,12 @@ export interface RecordedCall {
 }
 
 /**
+ * 실제 Blob은 이 크기 이상 객체를 압축해 내려주며 `get()` ETag를 weak(`W/"…"`)로 바꿉니다.
+ * staging에서 500B는 strong, 1,000B부터 weak였습니다. `put()`과 `list()`는 strong ETag를 돌려줍니다.
+ */
+const WEAK_ETAG_MIN_BYTES = 1_000;
+
+/**
  * 실제 Blob API 대신 `@vercel/blob`의 오류 타입과 조건부 쓰기 의미를 흉내 내는 fake입니다.
  * 이미 존재하는 객체 생성은 실제 SDK처럼 일반 `BlobError`로 실패시킵니다.
  * list는 cursor 처리를 검증하도록 2개씩 나눠 반환합니다.
@@ -36,7 +42,8 @@ export class FakeBlobSdk implements BlobSdk {
       headers: new Headers(),
       blob: {
         url: `https://fake.blob/${pathname}`, downloadUrl: `https://fake.blob/${pathname}?download=1`, pathname,
-        contentDisposition: "inline", cacheControl: "max-age=60", uploadedAt: blob.uploadedAt, etag: blob.etag,
+        contentDisposition: "inline", cacheControl: "max-age=60", uploadedAt: blob.uploadedAt,
+        etag: blob.body.length >= WEAK_ETAG_MIN_BYTES ? `W/${blob.etag}` : blob.etag,
         contentType: "application/octet-stream", size: blob.body.length,
       },
     };
