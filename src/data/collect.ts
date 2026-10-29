@@ -2,6 +2,7 @@ import type { CachedCommit, CollectionMetrics, CollectionResult, SearchCommit } 
 import { parseUsername } from "../username.js";
 import { assembleCollectionResult, collectionPeriod } from "./collection-model.js";
 import type { CollectionDependencies } from "./collection-ports.js";
+import { isUnavailableCommitDetail } from "./github-pages.js";
 
 export interface CollectOptions {
   username: string;
@@ -24,6 +25,7 @@ export async function collectStats(options: CollectOptions, dependencies: Collec
     searchedCommits: 0,
     cacheHits: 0,
     fetchedCommits: 0,
+    skippedCommits: 0,
     removedCommits: 0,
   };
 
@@ -47,8 +49,15 @@ export async function collectStats(options: CollectOptions, dependencies: Collec
         commits.set(key, { ...commit, languages: cached.languages });
         continue;
       }
-      const filenames = await dependencies.github.getCommitFilenames(commit.repository, commit.sha);
-      commits.set(key, { ...commit, languages: classifier.classifyFiles(filenames) });
+      let languages: string[];
+      try {
+        languages = classifier.classifyFiles(await dependencies.github.getCommitFilenames(commit.repository, commit.sha));
+      } catch (error) {
+        if (!isUnavailableCommitDetail(error)) throw error;
+        languages = [];
+        metrics.skippedCommits += 1;
+      }
+      commits.set(key, { ...commit, languages });
       metrics.fetchedCommits += 1;
     }
 

@@ -49,6 +49,16 @@ export interface VercelBlobStoreOptions {
 }
 
 /**
+ * `get()`의 ETag를 `ifMatch`에 쓸 수 있는 strong ETag로 바꿉니다.
+ * Blob은 약 1KB 이상 객체를 압축해 내려주면서 ETag를 `W/"…"`로 바꾸는데, weak 값으로는 `ifMatch`가 항상 실패합니다.
+ * `W/` 안의 값은 `put()`·`head()`의 strong ETag와 같고 그 값으로는 교체가 됩니다(2026-10-24 staging 확인).
+ * 이 대응이 틀려도 조건부 쓰기가 충돌로 끝날 뿐 다른 쓰기를 덮지는 않습니다.
+ */
+function strongEtag(etag: string): string {
+  return etag.startsWith("W/") ? etag.slice(2) : etag;
+}
+
+/**
  * 하나의 Vercel Blob store에 대한 adapter입니다.
  * 모든 요청에 OIDC token과 store ID를 명시해, SDK가 환경 변수의 다른 store 토큰으로 넘어가지 않게 합니다.
  * store의 private/public 접근 방식은 생성 후 바뀌지 않으므로 `access`는 실제 store와 같아야 합니다.
@@ -88,7 +98,7 @@ export class VercelBlobObjectStore implements ObjectStore {
     if (result.statusCode !== 200) {
       throw new Error("Unexpected Blob read status.");
     }
-    return { body: await new Response(result.stream).text(), etag: result.blob.etag };
+    return { body: await new Response(result.stream).text(), etag: strongEtag(result.blob.etag) };
   }
 
   async write(pathname: string, body: string, options: WriteOptions): Promise<string | null> {

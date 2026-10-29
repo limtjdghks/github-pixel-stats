@@ -68,6 +68,11 @@ export interface CollectionMetrics {
   searchedCommits: number;
   cacheHits: number;
   fetchedCommits: number;
+  /**
+   * `fetchedCommits` 중 상세를 조회할 수 없어 언어 없이 저장한 커밋 수입니다(`isUnavailableCommitDetail()`).
+   * 이 커밋도 커밋 수·활동일에는 들어가며, 언어 없이 cache되므로 다음 수집에서 다시 조회하지 않습니다.
+   */
+  skippedCommits: number;
   removedCommits: number;
 }
 

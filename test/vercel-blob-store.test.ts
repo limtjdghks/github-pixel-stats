@@ -63,6 +63,16 @@ test("vercel blob adapter maps conditional failures to null but rethrows service
   await assert.rejects(blobStore.write("manifests/alpha.json", "x", { ...write, condition: { kind: "match", etag } }), BlobServiceNotAvailable);
 });
 
+test("vercel blob adapter turns the weak ETag of a large read into one that a conditional write accepts", async () => {
+  // 실제 Blob은 1KB 이상 객체의 get() ETag를 W/로 내려주며, 그 값 그대로는 ifMatch가 실패합니다(2026-10-24 staging 재현).
+  const { store: blobStore } = store("private");
+  const large = JSON.stringify({ pad: "x".repeat(5_000) });
+  const written = await blobStore.write("checkpoints/alpha.json", large, { ...write, condition: { kind: "absent" } });
+  const stored = await blobStore.read("checkpoints/alpha.json");
+  assert.equal(stored?.etag, written);
+  assert.ok(await blobStore.write("checkpoints/alpha.json", `${large} `, { ...write, condition: { kind: "match", etag: stored!.etag } }));
+});
+
 test("vercel blob adapter treats a write that landed before an SDK retry failure as success", async () => {
   // 첫 PUT은 반영됐지만 응답이 유실되고, SDK 자동 재시도가 충돌 오류로 끝나는 상황을 흉내 냅니다.
   const sdk = new FakeBlobSdk();

@@ -95,6 +95,78 @@ test("700 commits produce the same complete result in one run, JSON-restored bat
   assert.equal(many.checkpoint?.nextRefreshAt, null);
 });
 
+test("unavailable commit details keep the commit without languages in batch and legacy collection", async () => {
+  // 첫 커밋은 첫 page에서 403, 둘째는 정상, 셋째는 둘째 page에서 404로 이미 받은 page도 버립니다.
+  const f = fixture(3);
+  const [blocked, normal, removed] = f.searched.map((commit) => commit.sha);
+  const files = (sha: string, page: number): PageResult => {
+    if (sha === blocked) throw new GitHubRequestError("GitHub API 403", null, 403);
+    if (sha === removed && page === 2) throw new GitHubRequestError("GitHub API 404", null, 404);
+    return { kind: "files", filenames: ["src/main.ts"], fileCount: 1, hasNext: sha === removed && page === 1 };
+  };
+  f.dependencies.github.requestPage = async (request) => {
+    f.calls.push(structuredClone(request));
+    return request.kind === "files" ? files(request.sha, request.page) : f.page(request);
+  };
+  const result = await finish(f);
+  const commits = result.result!.nextState.commits;
+  assert.deepEqual([blocked, normal, removed].map((sha) => commits[`1:${sha}`]?.languages), [[], ["TypeScript"], []]);
+  assert.equal(result.result?.snapshot.stats.commits, 3);
+  assert.deepEqual(result.result?.metrics, { searchedCommits: 3, cacheHits: 0, fetchedCommits: 3, skippedCommits: 2, removedCommits: 0 });
+
+  const one = fixture(3);
+  one.dependencies.github.requestPage = f.dependencies.github.requestPage;
+  const batch = await collectStatsBatch(one.options(), one.dependencies);
+  assert.equal(batch.status, "ready");
+  assert.equal(batch.skippedCommits, 2);
+  const legacy = await collectStats({ username: "FIXTURE" }, {
+    now: () => new Date(NOW),
+    loadClassifier: async () => classifier,
+    loadState: async () => ({ state: null, cacheUsable: false }),
+    github: {
+      getProfileStats: async () => ({ login: "Fixture", publicRepositories: 2, stars: 7 }),
+      searchCommits: async () => one.searched,
+      async getCommitFilenames(_repository, sha) {
+        const names: string[] = [];
+        for (let page = 1; ; page += 1) {
+          const result = files(sha, page) as Extract<PageResult, { kind: "files" }>;
+          names.push(...result.filenames);
+          if (!result.hasNext) return names;
+        }
+      },
+    },
+  });
+  assert.deepEqual(batch.result, legacy);
+});
+
+test("a skipped commit detail is not reported when its checkpoint write loses the lease", async () => {
+  // 저장 간격(10초) 안의 건너뛰기는 마지막 저장 때 반영되므로, 그 저장이 충돌하면 다음 실행이 다시 건너뜁니다.
+  const f = fixture(2);
+  f.dependencies.github.requestPage = async (request) => {
+    if (request.kind === "files" && request.sha === f.searched[0]!.sha) throw new GitHubRequestError("GitHub API 403", null, 403);
+    return f.page(request);
+  };
+  const compareAndSwap = f.dependencies.checkpoints.compareAndSwap.bind(f.dependencies.checkpoints);
+  f.dependencies.checkpoints.compareAndSwap = async (key, revision, checkpoint, guard, signal) =>
+    checkpoint.status === "ready" ? null : compareAndSwap(key, revision, checkpoint, guard, signal);
+  const result = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(result.status, "conflict");
+  assert.equal(result.skippedCommits, 0);
+});
+
+test("a throttled 403 on commit details pauses instead of skipping the commit", async () => {
+  const f = fixture();
+  f.dependencies.github.requestPage = async (request) => {
+    if (request.kind === "files") throw new GitHubRequestError("rate limited", 60_000, 403);
+    return f.page(request);
+  };
+  const result = await collectStatsBatch(f.options(), f.dependencies);
+  assert.equal(result.status, "paused");
+  assert.equal(result.skippedCommits, 0);
+  assert.deepEqual(result.checkpoint?.cursor, { stage: "details", index: 0, page: 1, filenames: [], fileCount: 0 });
+  assert.equal(result.checkpoint?.metrics.skippedCommits, 0);
+});
+
 test("one-request batches preserve profile, repository, search, and partial file pages", async () => {
   const f = fixture();
   f.dependencies.github.requestPage = async (request) => {

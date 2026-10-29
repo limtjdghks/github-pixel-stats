@@ -71,7 +71,7 @@ test("collector uses canonical login and reuses matching cache without I/O", asy
   assert.equal(result.snapshot.username, "Fixture-Alpha");
   assert.equal(result.snapshot.generatedAt, "2026-09-12T23:59:59.000Z");
   assert.deepEqual(result.snapshot.stats, { commits: 3, publicRepositories: 4, stars: 7 });
-  assert.deepEqual(result.metrics, { searchedCommits: 3, cacheHits: 3, fetchedCommits: 0, removedCommits: 0 });
+  assert.deepEqual(result.metrics, { searchedCommits: 3, cacheHits: 3, fetchedCommits: 0, skippedCommits: 0, removedCommits: 0 });
   assert.equal(result.stateChanged, true);
   assert.equal(result.snapshot.languages[0]?.name, "TypeScript");
   assert.equal(result.snapshot.languages[0]?.commitCount, 3);
@@ -92,7 +92,7 @@ test("collector fetches another user's commit and does not reuse the previous ac
 
   assert.deepEqual(calls.state, ["fixture-beta"]);
   assert.equal(calls.detail.length, 1);
-  assert.deepEqual(result.metrics, { searchedCommits: 1, cacheHits: 0, fetchedCommits: 1, removedCommits: 0 });
+  assert.deepEqual(result.metrics, { searchedCommits: 1, cacheHits: 0, fetchedCommits: 1, skippedCommits: 0, removedCommits: 0 });
   assert.deepEqual(result.snapshot.languages, []);
   assert.equal(result.nextState.username, "fixture-beta");
 });
@@ -131,7 +131,7 @@ test("collector failure retains completed metrics and cause", async () => {
       assert.ok(error instanceof CollectionFailure);
       assert.equal(error.message, "detail failed");
       assert.equal((error.cause as Error).message, "detail failed");
-      assert.deepEqual(error.metrics, { searchedCommits: 1, cacheHits: 0, fetchedCommits: 0, removedCommits: 0 });
+      assert.deepEqual(error.metrics, { searchedCommits: 1, cacheHits: 0, fetchedCommits: 0, skippedCommits: 0, removedCommits: 0 });
       return true;
     },
   );

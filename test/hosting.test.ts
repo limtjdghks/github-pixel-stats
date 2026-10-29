@@ -93,11 +93,13 @@ test("Vercel routes and function resource declarations match the public contract
   assert.equal(config.builds, undefined);
   assert.equal(config.outputDirectory, "public");
   // 카드 route가 읽는 rewrite query 이름과 vercel.json이 같아야 합니다.
+  // Vercel은 source 경로 파라미터도 같은 이름의 query로 한 번 더 붙이므로 source 파라미터 이름도 내부 이름이어야 합니다.
+  // 공개 이름이면 그 query를 사용자 query로 보고 정규 URL이 자기 자신으로 redirect됩니다(2026-10-24 staging 재현).
   const { card, username } = ROUTING_PARAMS;
   assert.deepEqual(config.rewrites, [
     { source: "/healthz", destination: "/api/health" },
-    { source: "/:username/stats.svg", destination: `/api/card?${card}=stats&${username}=:username` },
-    { source: "/:username/languages.svg", destination: `/api/card?${card}=languages&${username}=:username` },
+    { source: `/:${username}/stats.svg`, destination: `/api/card?${card}=stats&${username}=:${username}` },
+    { source: `/:${username}/languages.svg`, destination: `/api/card?${card}=languages&${username}=:${username}` },
   ]);
   // Hobby Cron은 하루 1회만 허용되므로 매일 실행되는 UTC schedule 하나만 둡니다.
   assert.deepEqual(config.crons, [{ path: "/api/cron", schedule: "17 18 * * *" }]);

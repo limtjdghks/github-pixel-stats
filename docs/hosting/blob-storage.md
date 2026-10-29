@@ -53,9 +53,10 @@
 - `BLOB_PRIVATE_STORE_ID`와 `BLOB_PUBLIC_STORE_ID`는 함께 설정해야 하며 같은 값을 허용하지 않습니다.
 - manifest와 checkpoint 조회는 `useCache: false`로 origin을 읽습니다. SDK는 이 옵션을 private store에만 적용하므로 public store(카드) 읽기는 항상 Blob CDN을 거칩니다. 카드 pathname은 내용 주소라 cache 사본도 같은 내용입니다.
 - checkpoint lease guard는 ETag를 문자열로 비교하지 않고 lease 소유권만 확인합니다. Blob은 `get()` 응답 헤더와 `put()` 응답에서 ETag를 따로 받으므로 revision 일치는 조건부 쓰기에 맡깁니다.
+- Blob은 약 1KB 이상 객체를 압축해 내려주며 `get()` ETag를 weak(`W/"…"`)로 바꿉니다. weak 값으로는 `ifMatch`가 항상 실패하므로 adapter가 읽을 때 `W/`를 떼어 strong ETag로 돌려줍니다. 안의 값은 `put()`·`head()`의 ETag와 같고, 그 값으로 교체가 됨을 실제 store에서 확인했습니다(2026-10-24 staging). 이 처리가 없으면 커진 checkpoint·manifest·`admissions.json`의 조건부 갱신이 매번 충돌로 끝나 수집을 이어 갈 수 없습니다.
 - 같은 store 금지 검사는 SDK와 같이 `store_` 접두사를 제거한 뒤 비교합니다.
 - 조건부 쓰기가 실패하면 객체를 다시 읽어 판정합니다. 방금 쓴 내용과 같으면 성공, 다른 내용이면 충돌, 객체가 없으면 원래 오류입니다. SDK가 기존 객체 생성 충돌을 별도 오류로 구분하지 않고, 응답이 유실된 PUT을 자동 재시도하면 실제로 반영된 쓰기도 충돌 오류로 끝나기 때문입니다.
-- SDK는 네트워크 오류를 `VERCEL_BLOB_RETRIES`(기본 10회) 만큼 지수 backoff로 재시도합니다. 이 값은 프로세스 전역 환경 변수이므로 코드에서 바꾸지 않습니다. Function `maxDuration` 안에 재시도가 끝나도록 배포 환경에서 작은 값을 설정하는 것을 권장하며, 실제 값은 HOST-13 staging 검증에서 정합니다. 호출자가 넘긴 abort signal은 read·write 요청에 전달됩니다.
+- SDK는 네트워크 오류를 `VERCEL_BLOB_RETRIES`(기본 10회) 만큼 지수 backoff로 재시도합니다. 이 값은 프로세스 전역 환경 변수이므로 코드에서 바꾸지 않습니다. Function `maxDuration` 안에 재시도가 끝나도록 배포 환경에서 작은 값을 설정합니다. staging은 `3`입니다. backoff는 1·2·4…초에 1~2배 무작위가 곱해지므로 3회면 대기 합계가 7~14초로 카드 Function(30초) 안에 들어갑니다. 기본 10회는 최악 대기가 Function 제한을 크게 넘습니다. 호출자가 넘긴 abort signal은 read·write 요청에 전달됩니다.
 
 ## 마스코트 registry 변경
 

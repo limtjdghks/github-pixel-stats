@@ -35,8 +35,10 @@
 | 오류 | 처리 | checkpoint |
 | --- | --- | --- |
 | rate limit(403·429와 `retry-after` 또는 소진된 `x-ratelimit-*`) | 대기 시간과 횟수에 관계없이 reset까지 `paused`. 1시간보다 긴 대기는 1시간으로 줄임 | `retry.nextAttemptAt`만 설정 |
+| 대기 헤더 없는 403·429 중 본문 `message`에 `rate limit`이 있는 응답(secondary rate limit) | 1분 뒤까지 `paused`(`secondaryRateLimitDelay()`). 커밋 상세라도 건너뛰지 않음 | `retry.nextAttemptAt`만 설정 |
 | 5xx, 응답 전 네트워크 오류 | 1분 → 5분 → 15분 backoff로 최대 3회 `paused`, 그다음 실패는 `failed` | `retry.attempts` 증가 |
-| 그 밖의 응답(404 등) | 즉시 `failed` | `error` 기록 |
+| 커밋 상세(`/repos/{repo}/commits/{sha}`)의 rate limit이 아닌 403·404·451 | 그 커밋만 언어 없이 저장하고 다음 커밋으로 진행. 커밋 수·활동일에는 포함하고 언어 비율에서만 빠짐. 언어 없이 cache되므로 다음 수집에서 다시 조회하지 않음 | `metrics.skippedCommits` 증가, `bootstrap.completed`·`cron.completed` 로그의 `skippedCommits` |
+| 그 밖의 응답(프로필·저장소·검색의 404 등) | 즉시 `failed` | `error` 기록 |
 
 - `paused`인 사용자는 `nextAttemptAt` 전에는 GitHub 요청 없이 끝나고, 그 뒤 카드 요청의 bootstrap이나 Cron이 이어서 수집합니다. 성공한 요청이 하나라도 있으면 `retry`는 초기화됩니다.
 - batch가 rate limit으로 멈추면 결과의 `rateLimitedUntil`에 재시도 가능 시각을 담습니다. 이미 지난 `nextAttemptAt`이 checkpoint에 남아 있어도 rate limit으로 보고하지 않습니다.

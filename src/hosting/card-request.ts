@@ -78,7 +78,8 @@ function isCanonical(url: URL, rawUsername: string, username: string, card: Publ
 /**
  * 카드 URL에서 카드 종류·사용자명·마스코트와 정규 경로를 해석합니다. 카드 종류를 알 수 없거나 모호하면 null입니다.
  * 공개 경로 `/{username}/{card}.svg`와 Vercel rewrite가 만든 `/api/card?__card=...&__username=...` 형태를 모두 받으며,
- * 공개 경로이면 rewrite query는 카드 선택에 쓰지 않습니다. 실제 배포의 URL 형태는 HOST-13 staging에서 확인합니다.
+ * 공개 경로이면 rewrite query는 카드 선택에 쓰지 않습니다. 실제 배포에서는 공개 경로에 원래 query·destination query·
+ * source 경로 파라미터(`__username`)가 합쳐진 형태로 받습니다(`docs/hosting/card-route.md`).
  * 경로의 사용자명은 decode하지 않으므로 percent-encoding된 값은 잘못된 사용자명이 됩니다.
  */
 export function parseCardRequest(url: URL): CardRequest | null {

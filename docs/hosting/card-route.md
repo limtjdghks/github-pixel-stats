@@ -15,7 +15,8 @@
 
 ## 요청 해석
 
-- 공개 경로 `/{username}/{card}.svg`와 Vercel rewrite가 만든 `/api/card?__card={card}&__username={username}`을 모두 받습니다. rewrite query는 사용자가 붙인 `card`·`username` query와 겹치지 않도록 내부 이름(`ROUTING_PARAMS`)을 쓰며, `vercel.json`과 같은지 테스트로 확인합니다. Function이 받는 실제 URL 형태는 HOST-13 staging에서 확인합니다.
+- 공개 경로 `/{username}/{card}.svg`와 Vercel rewrite가 만든 `/api/card?__card={card}&__username={username}`을 모두 받습니다. rewrite query는 사용자가 붙인 `card`·`username` query와 겹치지 않도록 내부 이름(`ROUTING_PARAMS`)을 쓰며, `vercel.json`과 같은지 테스트로 확인합니다.
+- 실제 배포(2026-10-24 staging)에서 Function은 `/api/card`가 아니라 공개 경로를 받고, query에는 원래 query 뒤에 destination query와 rewrite source의 경로 파라미터가 한 번 더 붙습니다(예: `/{username}/stats.svg?mascot=x&__card=stats&__username={username}&__username={username}`). 그래서 source 경로 파라미터 이름도 내부 이름 `__username`으로 둡니다. 공개 이름(`:username`)을 쓰면 플랫폼이 붙인 `username` query를 사용자 query로 보고 정규 URL을 자기 자신으로 계속 redirect합니다.
 - 공개 경로이면 rewrite query는 카드 선택에 쓰지 않습니다. rewrite된 형태에서 같은 query가 서로 다른 값으로 여러 번 오면 어느 값도 고르지 않습니다. `__card`는 404, `__username`은 `invalid-username`, `mascot`은 기본 마스코트로 처리합니다.
 - 사용자명은 `parseUsername()` 규칙으로 검사하고 대소문자를 구분하지 않습니다. 경로 값은 decode하지 않습니다.
 - `stats.svg?mascot={id}`는 `resolveMascotId()`로 고릅니다. release에 그 variant가 없으면 기본 마스코트, 그것도 없으면 release의 첫 마스코트를 씁니다. registry 변경으로 release의 마스코트 목록이 비면 previous release 카드를 씁니다. `languages.svg`는 `mascot`을 무시합니다.

@@ -5,6 +5,7 @@ import {
   GitHubRequestError,
   GitHubRestPageSource,
   getRateLimitDelay,
+  isUnavailableCommitDetail,
   splitSearchInterval,
   type PageRequest,
 } from "../src/data/github-pages.js";
@@ -27,6 +28,32 @@ test("page source performs one request and exposes retry metadata without retryi
     },
   );
   assert.equal(requests, 1);
+});
+
+test("a 403 or 429 without wait headers waits a minute only when its body reports a rate limit", async (t) => {
+  // 헤더 없는 secondary rate limit을 권한 거부로 보면 커밋 상세를 건너뛰어 언어 없는 결과가 cache됩니다.
+  const cases: Array<[number, string, number | null]> = [
+    [403, JSON.stringify({ message: "You have exceeded a secondary rate limit. Please wait a few minutes before you try again." }), 60_000],
+    [429, JSON.stringify({ message: "API rate limit exceeded for user ID 1." }), 60_000],
+    [403, JSON.stringify({ message: "The 'Org' organization forbids access via a fine-grained personal access tokens if the token's lifetime is greater than 366 days." }), null],
+    [403, "not json", null],
+    [404, JSON.stringify({ message: "rate limit" }), null],
+  ];
+  let next = cases[0]!;
+  t.mock.method(globalThis, "fetch", async () => new Response(next[1], { status: next[0] }));
+  for (const testCase of cases) {
+    next = testCase;
+    const [status, body, delay] = testCase;
+    await assert.rejects(
+      new GitHubRestPageSource("fixture-token").requestPage(filesRequest, new AbortController().signal),
+      (error: unknown) => {
+        assert.ok(error instanceof GitHubRequestError);
+        assert.equal(error.retryDelayMs, delay, `${status} ${body}`);
+        assert.equal(isUnavailableCommitDetail(error), delay === null && status !== 429, `${status} ${body}`);
+        return true;
+      },
+    );
+  }
 });
 
 test("network failures become retryable request errors while cancellation stays a cancellation", async (t) => {
@@ -60,6 +87,17 @@ test("rate-limit metadata applies only to throttling and honors reset fallback",
   assert.equal(getRateLimitDelay(new Response("", { status: 429, headers: {
     "retry-after": "0", "x-ratelimit-remaining": "0", "x-ratelimit-reset": "10",
   } }), 5_000), 1_000);
+});
+
+test("only non-throttling 403, 404, and 451 make a commit detail unavailable", () => {
+  for (const status of [403, 404, 451]) {
+    assert.equal(isUnavailableCommitDetail(new GitHubRequestError(`GitHub API ${status}`, null, status)), true, String(status));
+  }
+  assert.equal(isUnavailableCommitDetail(new GitHubRequestError("rate limited", 1_000, 403)), false);
+  for (const status of [401, 409, 422, 500, undefined]) {
+    assert.equal(isUnavailableCommitDetail(new GitHubRequestError("GitHub API error", null, status)), false, String(status));
+  }
+  assert.equal(isUnavailableCommitDetail(new Error("GitHub API 403")), false);
 });
 
 test("page source passes the cancellation signal to fetch", async (t) => {
