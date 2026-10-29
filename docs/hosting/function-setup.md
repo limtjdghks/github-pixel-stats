@@ -18,7 +18,7 @@
 | Preview | `preview` | 없음(설정하지 않으면 bootstrap과 Cron이 실행되지 않음) |
 | Development | `development` 또는 로컬 실행 시 미설정 | 없음 |
 
-Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `CRON_SECRET`, `BLOB_PRIVATE_STORE_ID`, `BLOB_PUBLIC_STORE_ID`의 빈 값 여부를 검증합니다. 카드 Function은 두 Blob store ID로 카드를 읽고, `GH_STATS_TOKEN`까지 있으면 pending 요청에서 bootstrap을 실행합니다. 두 store ID가 모두 없으면 형식이 올바른 카드 요청에 `unavailable` 상태 SVG를 반환합니다. 응답 분기 전체는 [`card-route.md`](./card-route.md)에 있습니다. Cron Function은 `CRON_SECRET`, `GH_STATS_TOKEN`, 두 Blob store ID가 모두 있어야 실행되고, 하나라도 없으면 503입니다([`refresh.md`](./refresh.md)). 운영 GitHub token과 운영 Blob store ID를 Preview에 등록하지 마세요. 프로젝트의 환경별 Secret 실제 설정은 HOST-13에서 진행합니다.
+Function 시작 시 `VERCEL_ENV`와 선택적 `GH_STATS_TOKEN`, `CRON_SECRET`, `BLOB_PRIVATE_STORE_ID`, `BLOB_PUBLIC_STORE_ID`의 빈 값 여부를 검증합니다. 카드 Function은 두 Blob store ID로 카드를 읽고, `GH_STATS_TOKEN`까지 있으면 pending 요청에서 bootstrap을 실행합니다. 두 store ID가 모두 없으면 형식이 올바른 카드 요청에 `unavailable` 상태 SVG를 반환합니다. 응답 분기 전체는 [`card-route.md`](./card-route.md)에 있습니다. Cron Function은 `CRON_SECRET`, `GH_STATS_TOKEN`, 두 Blob store ID가 모두 있어야 실행되고, 하나라도 없으면 503입니다([`refresh.md`](./refresh.md)). 운영 GitHub token과 운영 Blob store ID를 Preview에 등록하지 마세요. staging의 실제 구성과 검증 결과는 [`staging.md`](./staging.md)에 있으며, 운영 프로젝트 설정은 HOST-13 ②에서 진행합니다.
 
 ## Blob 저장소
 

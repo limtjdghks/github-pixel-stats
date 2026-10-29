@@ -45,7 +45,17 @@ vercel env pull --environment=production .env.ops
 node --env-file=.env.ops --import tsx src/cli/ops.ts status
 ```
 
-로컬 OIDC token으로 운영 store에 접근할 수 있는지, token이 만료되면 어떻게 갱신되는지는 HOST-13 staging에서 확인합니다. 확인 전까지 위 절차는 가정입니다.
+2026-10-24 staging에서 위 절차를 확인했습니다. 다음 조건이 필요합니다.
+
+- `vercel env pull`이 받는 OIDC token은 development 환경용입니다. 두 store를 프로젝트의 development 환경에도 연결해야 CLI가 store에 접근합니다. 연결하지 않으면 `OIDC is enabled for this project, but not for the "development" environment.`로 실패합니다. 운영 store를 development에 연결할지는 HOST-13 ②에서 정합니다.
+- `BLOB_PRIVATE_STORE_ID`·`BLOB_PUBLIC_STORE_ID`는 Secret이 아니므로 일반(`--no-sensitive`) 환경 변수로 둡니다. Sensitive 값은 `env pull`에서 `[SENSITIVE]`로만 내려와 CLI가 `Invalid Blob store configuration.`으로 실패합니다.
+- 받은 OIDC token은 약 12시간 뒤 만료됩니다. 만료되면 `vercel env pull`을 다시 실행합니다. `.env.ops`에는 OIDC token과 store 연결 시 자동 생성되는 `BLOB_READ_WRITE_TOKEN`이 함께 들어가므로 작업이 끝나면 지웁니다.
+
+### Cron 수동 실행과 로그
+
+- `vercel crons run /api/cron`은 Vercel이 `CRON_SECRET`을 붙여 Production Cron을 즉시 호출합니다. 운영자가 Secret 값을 다루지 않고 Cron을 다시 돌릴 수 있습니다.
+- rollback·삭제·복구는 Blob과 manifest만 바꾸므로 CDN에 남은 카드는 TTL(최대 12시간)까지 그대로입니다. 바로 반영하려면 `vercel cache purge --type cdn --yes`를 실행합니다. staging에서는 수 초 안에 반영됐습니다. 프로젝트 전체 cache가 지워지므로 다른 사용자 카드도 다음 요청에서 Blob을 다시 읽습니다.
+- Hobby는 runtime log를 1시간만 보존합니다. 지난 Cron·bootstrap 결과는 로그 대신 `usage` 명령의 일별 기록과 `status`로 확인합니다.
 
 ### 명령
 
