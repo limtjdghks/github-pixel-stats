@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-11-03T23:28:01.000Z",
+  "updatedAt": "2026-11-04T23:44:11.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -838,6 +838,17 @@
       "sha": "30e7438adb4e9bc0a9381dcda4d0c88953437eaf",
       "authoredAt": "2026-08-27T22:00:40.000+09:00",
       "languages": [
+        "TypeScript"
+      ]
+    },
+    "1167236879:319557e706afd51ee91f5f08fef8570b2451de96": {
+      "repositoryId": 1167236879,
+      "repository": "team-ieum/ieum-frontend",
+      "sha": "319557e706afd51ee91f5f08fef8570b2451de96",
+      "authoredAt": "2026-11-04T20:47:33.000+09:00",
+      "languages": [
+        "CSS",
+        "Other",
         "TypeScript"
       ]
     },
@@ -6645,12 +6656,46 @@
         "Swift"
       ]
     },
+    "1389019930:09f19f4b03ce32acafab94083116342763c21391": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "09f19f4b03ce32acafab94083116342763c21391",
+      "authoredAt": "2026-10-30T21:24:57.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389019930:0cdcdf5cd134950a45b6c9507826d161f49c71b5": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "0cdcdf5cd134950a45b6c9507826d161f49c71b5",
+      "authoredAt": "2026-10-30T21:22:07.000+09:00",
+      "languages": []
+    },
     "1389019930:1fbca95f4fe53307ac80960a9f4b8b0747686d1f": {
       "repositoryId": 1389019930,
       "repository": "39-play-sopt-ios/LimSeongHwan-practice",
       "sha": "1fbca95f4fe53307ac80960a9f4b8b0747686d1f",
       "authoredAt": "2026-10-16T23:10:38.000+09:00",
       "languages": []
+    },
+    "1389019930:2af7814b6960f8823153babcd2dfb2dc5205c57d": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "2af7814b6960f8823153babcd2dfb2dc5205c57d",
+      "authoredAt": "2026-10-30T21:26:49.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389019930:2c8fbbf4e5ab7900601d6a69f10f678c2db4f88c": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "2c8fbbf4e5ab7900601d6a69f10f678c2db4f88c",
+      "authoredAt": "2026-10-30T21:23:44.000+09:00",
+      "languages": [
+        "Swift"
+      ]
     },
     "1389019930:2f29094e4a57f7d0b1b87284491a74fb5b7f7d50": {
       "repositoryId": 1389019930,
@@ -6692,6 +6737,15 @@
       "sha": "5f1b92670ff34d37ee8d0d4748f7f32ec9de8b82",
       "authoredAt": "2026-09-26T19:56:20.000+09:00",
       "languages": []
+    },
+    "1389019930:6fd3f44b0d5970a7f546edfcb5e6c01fb3478f9c": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "6fd3f44b0d5970a7f546edfcb5e6c01fb3478f9c",
+      "authoredAt": "2026-10-30T21:24:07.000+09:00",
+      "languages": [
+        "Swift"
+      ]
     },
     "1389019930:8af4fe8593b057a2fa6fbdcada8ef53fdd026b7a": {
       "repositoryId": 1389019930,
@@ -6745,6 +6799,15 @@
         "Other"
       ]
     },
+    "1389019930:d29daf92debb18216c6b05fe9b97704f004bb716": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "d29daf92debb18216c6b05fe9b97704f004bb716",
+      "authoredAt": "2026-10-30T21:22:25.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
     "1389019930:e048d522541447eab1ecc0a0f4521a091cc34a5c": {
       "repositoryId": 1389019930,
       "repository": "39-play-sopt-ios/LimSeongHwan-practice",
@@ -6768,6 +6831,15 @@
       "repository": "39-play-sopt-ios/LimSeongHwan-practice",
       "sha": "e76bbfd205dad307915c400589694bc58fee0762",
       "authoredAt": "2026-10-10T14:51:40.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1389019930:e84aea248b1e06971348c708fc76bd7e06aa2dee": {
+      "repositoryId": 1389019930,
+      "repository": "39-play-sopt-ios/LimSeongHwan-practice",
+      "sha": "e84aea248b1e06971348c708fc76bd7e06aa2dee",
+      "authoredAt": "2026-10-30T21:26:34.000+09:00",
       "languages": [
         "Swift"
       ]
@@ -6965,16 +7037,6 @@
       "sha": "29aa6850f57ac3970682145b47f6100cae6a7f20",
       "authoredAt": "2025-11-10T09:52:11.000+09:00",
       "languages": [
-        "TypeScript"
-      ]
-    },
-    "947120414:2d987f0ccd18c64bfa7a001142ba2c28fc3f9282": {
-      "repositoryId": 947120414,
-      "repository": "DMU-NextLevel/front",
-      "sha": "2d987f0ccd18c64bfa7a001142ba2c28fc3f9282",
-      "authoredAt": "2025-11-04T16:34:15.000+09:00",
-      "languages": [
-        "JavaScript",
         "TypeScript"
       ]
     },
