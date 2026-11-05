@@ -4,7 +4,7 @@ import { countOperations, emptyOperationCount } from "../storage/operation-count
 import { userKey } from "../storage/pathnames.js";
 import { readUsage, updateUsage } from "../storage/usage.js";
 import { admissionDecision, admitUser, markAdmissionFailures } from "./admission-policy.js";
-import { logError, logEvent } from "./log.js";
+import { logAlert, logError, logEvent } from "./log.js";
 import { runRefreshJob, type RefreshDependencies } from "./refresh-job.js";
 import { addBootstrapUsage, bootstrapAllowed } from "./usage-policy.js";
 
@@ -67,6 +67,7 @@ export async function bootstrapUser(username: string, deadline: Date, dependenci
         resumeFailed: false,
       }, counted);
       run.published = outcome.publish === "published";
+      if (outcome.tokenRejected) logAlert("bootstrap.token_rejected");
       if (outcome.status === "failed") {
         const failedAt = dependencies.now();
         await updateAdmissions(store, (current) => markAdmissionFailures(current, [key], failedAt), untilDeadline(deadline, failedAt));

@@ -8,6 +8,11 @@ export function logEvent(event: string, fields: Readonly<Record<string, LogValue
   console.log(JSON.stringify({ level: "info", event, ...fields }));
 }
 
+/** 예외는 아니지만 운영자가 바로 조치해야 하는 상황을 `error` 수준 이벤트로 남깁니다. 필드 규칙은 `logEvent()`와 같습니다. */
+export function logAlert(event: string, fields: Readonly<Record<string, LogValue>> = {}): void {
+  console.error(JSON.stringify({ level: "error", event, ...fields }));
+}
+
 /** 오류는 메시지만 남깁니다. 메시지가 없는 값은 `unknown error`로 남깁니다. */
 export function logError(event: string, error: unknown): void {
   console.error(JSON.stringify({ level: "error", event, error: error instanceof Error ? error.message : "unknown error" }));

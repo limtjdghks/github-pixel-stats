@@ -6,7 +6,9 @@ import {
   GitHubRestPageSource,
   getRateLimitDelay,
   isUnavailableCommitDetail,
+  retryDecision,
   splitSearchInterval,
+  TOKEN_REJECTED_PAUSE_MS,
   type PageRequest,
 } from "../src/data/github-pages.js";
 
@@ -54,6 +56,20 @@ test("a 403 or 429 without wait headers waits a minute only when its body report
       },
     );
   }
+});
+
+test("a 401 response is a token rejection retried after an hour, even for a commit detail", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response('{"message":"Bad credentials"}', { status: 401 }));
+  await assert.rejects(
+    new GitHubRestPageSource("fixture-token").requestPage(filesRequest, new AbortController().signal),
+    (error: unknown) => {
+      assert.ok(error instanceof GitHubRequestError);
+      assert.equal(error.status, 401);
+      assert.equal(isUnavailableCommitDetail(error), false);
+      assert.deepEqual(retryDecision(error, 3), { kind: "token-rejected", delayMs: TOKEN_REJECTED_PAUSE_MS });
+      return true;
+    },
+  );
 });
 
 test("network failures become retryable request errors while cancellation stays a cancellation", async (t) => {

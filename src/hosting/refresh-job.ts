@@ -41,6 +41,8 @@ export interface RefreshOutcome {
   skippedCommits: number;
   /** 이번 실행이 GitHub rate limit으로 멈췄습니다. 같은 token을 쓰는 다른 작업도 멈추는 것이 좋습니다. */
   rateLimited: boolean;
+  /** 이번 실행이 GitHub의 token 거부(401)로 멈췄습니다. 같은 token을 쓰는 다른 작업도 멈추는 것이 좋습니다. */
+  tokenRejected: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ export async function runRefreshJob(
   // 첫 batch는 저장된 결과를 발행하고, 두 번째 batch는 발행이 확인된 오래된 결과를 새 job으로 바꿉니다.
   for (let pass = 0; pass < 2; pass += 1) {
     if (dependencies.now() >= batchDeadline) {
-      return { status: "paused", publish, requests, skippedCommits, rateLimited: false };
+      return { status: "paused", publish, requests, skippedCommits, rateLimited: false, tokenRejected: false };
     }
     const batch = await collectStatsBatch({
       username,
@@ -81,6 +83,7 @@ export async function runRefreshJob(
       requests,
       skippedCommits,
       rateLimited: batch.rateLimitedUntil !== null,
+      tokenRejected: batch.tokenRejected,
     });
     if (batch.status !== "ready" || batch.result === null || batch.checkpoint === null) return done();
 

@@ -4,7 +4,7 @@ import { collectStats } from "../src/data/collect.js";
 import { CHECKPOINT_SAVE_INTERVAL_MS, collectStatsBatch } from "../src/data/collect-batch.js";
 import type { BatchDependencies, BatchOptions, BatchResult, CollectionCheckpoint } from "../src/data/checkpoint-model.js";
 import type { LanguageClassifier } from "../src/data/collection-ports.js";
-import { GitHubRequestError, type PageRequest, type PageResult } from "../src/data/github-pages.js";
+import { GitHubRequestError, TOKEN_REJECTED_PAUSE_MS, type PageRequest, type PageResult } from "../src/data/github-pages.js";
 import type { CollectorState, SearchCommit } from "../src/model.js";
 import { MemoryCheckpointStore } from "./helpers/memory-checkpoint-store.js";
 
@@ -482,6 +482,23 @@ test("a primary rate limit with a long reset pauses until the reset, capped at o
   f.clock.now += 30 * 60_000;
   const capped = await collectStatsBatch(f.options(), f.dependencies);
   assert.equal(capped.rateLimitedUntil, new Date(f.clock.now + 60 * 60_000).toISOString());
+});
+
+test("a token rejected with 401 pauses for an hour without failing or consuming transient retries", async () => {
+  const f = fixture();
+  const request = f.dependencies.github.requestPage;
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 401", null, 401); };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const result = await collectStatsBatch(f.options({ maxRequests: 1 }), f.dependencies);
+    assert.deepEqual([result.status, result.tokenRejected, result.rateLimitedUntil], ["paused", true, null]);
+    assert.equal(result.checkpoint?.retry.attempts, 0);
+    assert.equal(result.checkpoint?.retry.nextAttemptAt, new Date(f.clock.now + TOKEN_REJECTED_PAUSE_MS).toISOString());
+    f.restart();
+    f.clock.now += TOKEN_REJECTED_PAUSE_MS;
+  }
+  f.dependencies.github.requestPage = request;
+  const resumed = await collectStatsBatch(f.options(), f.dependencies);
+  assert.deepEqual([resumed.status, resumed.tokenRejected], ["ready", false]);
 });
 
 test("5xx and network failures back off three times before failing, while 404 fails at once", async () => {

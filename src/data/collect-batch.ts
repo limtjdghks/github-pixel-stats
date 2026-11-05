@@ -106,6 +106,7 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
   let skippedCommits = 0;
   let checkpoint: CollectionCheckpoint | null = null;
   let rateLimitedUntil: string | null = null;
+  let tokenRejected = false;
   const response = (status: BatchResult["status"]): BatchResult => ({
     status,
     checkpoint,
@@ -113,6 +114,7 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
     skippedCommits,
     result: status === "ready" ? checkpoint?.result ?? null : null,
     rateLimitedUntil: status === "paused" ? rateLimitedUntil : null,
+    tokenRejected: status === "paused" && tokenRejected,
   });
   if (clock() >= cutoff) {
     return response("paused");
@@ -262,10 +264,11 @@ export async function collectStatsBatch(options: BatchOptions, dependencies: Bat
           }
           const retry = retryDecision(error, checkpoint.retry.attempts);
           if (retry !== null) {
-            // rate limit은 일시 오류 재시도 횟수를 소모하지 않고 reset까지 기다립니다.
+            // rate limit과 token 거부는 일시 오류 재시도 횟수를 소모하지 않고 대기 시각까지 기다립니다.
             if (retry.kind === "transient") checkpoint.retry.attempts += 1;
             checkpoint.retry.nextAttemptAt = new Date(clock() + retry.delayMs).toISOString();
             if (retry.kind === "rate-limit") rateLimitedUntil = checkpoint.retry.nextAttemptAt;
+            if (retry.kind === "token-rejected") tokenRejected = true;
             return await pause();
           }
           if (request.kind === "files" && isUnavailableCommitDetail(error)) {
