@@ -6,7 +6,7 @@ import { CHECKPOINT_PREFIX, checkpointPathname, MANIFEST_PREFIX, userKeyFromPath
 import { readUsage, removeExpiredUsage, updateUsage } from "../storage/usage.js";
 import { clearAdmissionFailures, expiredFailures, markAdmissionFailures, removeAdmissions } from "./admission-policy.js";
 import { boundedDeadline } from "./invocation-deadline.js";
-import { logError } from "./log.js";
+import { logAlert, logError } from "./log.js";
 import { PUBLISH_RESERVE_MS, PublishFailure, runRefreshJob, type RefreshDependencies } from "./refresh-job.js";
 import { selectDueUsers } from "./refresh-policy.js";
 import {
@@ -56,7 +56,7 @@ export interface CronSummary {
   expired: number;
   statuses: Record<BatchResult["status"], number>;
   /** 루프를 끝낸 이유입니다. `complete` 외에는 남은 due 사용자를 다음 실행이 이어받습니다. */
-  stopped: "complete" | "deadline" | "requests" | "rate-limit" | "blob-budget";
+  stopped: "complete" | "deadline" | "requests" | "rate-limit" | "token-rejected" | "blob-budget";
   blob: {
     /** 이번 실행이 쓴 Blob 작업 수입니다(사용량 기록 쓰기 포함). */
     operations: BlobOperationCount;
@@ -192,6 +192,12 @@ async function refreshDueUsers(
       }
       if (outcome.rateLimited) {
         summary.stopped = "rate-limit";
+        break;
+      }
+      // 401은 사용자가 아니라 `GH_STATS_TOKEN`의 문제라 남은 사용자도 같은 응답을 받습니다.
+      if (outcome.tokenRejected) {
+        summary.stopped = "token-rejected";
+        logAlert("cron.token_rejected");
         break;
       }
     } catch (error) {

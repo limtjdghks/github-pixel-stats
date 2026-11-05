@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GitHubRequestError } from "../src/data/github-pages.js";
+import { GitHubRequestError, TOKEN_REJECTED_PAUSE_MS } from "../src/data/github-pages.js";
 import { NEW_USER_LIMIT, admitUser } from "../src/hosting/admission-policy.js";
 import { BOOTSTRAP_MAX_REQUESTS, bootstrapUser } from "../src/hosting/bootstrap.js";
 import { boundedDeadline } from "../src/hosting/invocation-deadline.js";
@@ -81,6 +81,27 @@ test("a transient GitHub failure or rate limit during bootstrap resumes on a lat
     await bootstrapUser("fixture-user", deadline(f.clock.now), f.dependencies);
     assert.ok(await readManifest(f.privateStore, "fixture-user"), error.message);
   }
+});
+
+test("a token rejected during bootstrap alerts without marking the user failed and resumes after the pause", async () => {
+  const f = refreshFixture();
+  const request = f.dependencies.github.requestPage;
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 401", null, 401); };
+  const lines: string[] = [];
+  const originalError = console.error;
+  console.error = (line: unknown) => { lines.push(String(line)); };
+  try {
+    await bootstrapUser("fixture-user", deadline(REFRESH_NOW), f.dependencies);
+  } finally {
+    console.error = originalError;
+  }
+  assert.deepEqual(lines.map((line) => JSON.parse(line)), [{ level: "error", event: "bootstrap.token_rejected" }]);
+  assert.equal((await readAdmissions(f.privateStore)).admissions.users["fixture-user"]?.failedAt, null);
+
+  f.dependencies.github.requestPage = request;
+  f.clock.now += TOKEN_REJECTED_PAUSE_MS;
+  await bootstrapUser("fixture-user", deadline(f.clock.now), f.dependencies);
+  assert.ok(await readManifest(f.privateStore, "fixture-user"));
 });
 
 test("bootstrap registers new users and stops without GitHub requests once the new-user limit is reached", async () => {

@@ -12,11 +12,12 @@ export const DAILY_ADVANCED_BUDGET = 60;
  */
 export const BOOTSTRAP_DAILY_ADVANCED_BUDGET = 26;
 /**
- * 발행까지 끝나는 job 하나의 Advanced Operation 추정치입니다. 등록 1회, checkpoint lease·진행·완료 저장 2~3회,
- * 발행 쓰기 5회(snapshot·state·카드 2개·manifest), 정리 list 2회를 더한 값입니다.
+ * 발행까지 끝나는 job 하나의 Advanced Operation 추정치입니다. 등록 1회(bootstrap만), checkpoint lease·완료 저장 2회,
+ * 발행 쓰기 5회(snapshot·state·카드 2개·manifest), 정리 list 2회를 더한 값입니다(테스트 fake Blob 측정: bootstrap 10, Cron 갱신 9).
+ * 수집이 10초(`CHECKPOINT_SAVE_INTERVAL_MS`)를 넘으면 진행 저장이 10초마다 1회씩 늘어 Cron의 긴 job은 약 14회까지 씁니다.
  * 남은 예산이 이보다 적으면 job을 시작하지 않으며, 실제 job이 이보다 많이 쓰면 예산을 조금 넘을 수 있습니다.
  */
-export const JOB_ADVANCED_ESTIMATE = 12;
+export const JOB_ADVANCED_ESTIMATE = 10;
 /**
  * 사용량 기록 자체의 작업입니다. 시작할 때 읽기 1회와 갱신 안의 읽기·쓰기 1회씩이며,
  * 다른 실행과 충돌해 다시 시도한 작업은 세지 않습니다.

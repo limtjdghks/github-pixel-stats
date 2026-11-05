@@ -70,7 +70,7 @@ Cron은 `npx vercel@63.1.0 crons run /api/cron`으로 즉시 실행할 수 있�
 
 | 항목 | 값 |
 | --- | --- |
-| bootstrap 1회 | GitHub 20회, Blob Advanced 1~4회(추정치 `JOB_ADVANCED_ESTIMATE` 12) |
+| bootstrap 1회 | GitHub 20회, Blob Advanced 1~4회. 발행 없이 `paused`로 끝난 실행의 값이라 발행 job 추정치(`JOB_ADVANCED_ESTIMATE`)의 근거로는 쓰지 않음([`operations.md`](./operations.md)) |
 | Cron 사용자당 60초 | GitHub 170~196회(초당 약 3회) |
 | Cron 1회(사용자 2명) | Blob Advanced 12회(사용량·등록 기록 포함) |
 | 커밋 716개 계정 | 요청 약 720회. bootstrap 1회 + Cron 약 4회 |
@@ -85,4 +85,4 @@ Hobby의 하루 1회 Cron으로는 커밋 수백 개 사용자의 첫 카드까�
 - `vercel deploy --prebuilt --prod`의 첫 시도가 출력 없이 끝나거나 `Not authorized`로 실패한 적이 두 번 있었고, 다시 실행하면 성공했습니다. 배포 뒤에는 `vercel ls --prod`로 새 deployment를 확인합니다.
 
 - rollback·삭제·복구 뒤에는 CDN cache를 비워야 안정 URL에 반영됩니다. 지금은 프로젝트 전체를 purge하므로 다른 사용자 카드도 다음 요청에서 다시 읽습니다. 사용자 단위 무효화(cache tag)는 Issue #33 후보입니다.
-- GitHub token이 무효(401)이면 사용자 프로필 조회부터 실패해 사용자가 `failed`로 표시됩니다. 운영자 실수가 사용자 실패로 기록되므로 token 교체 직후 `status`의 `failed` 목록을 확인합니다. 상한·추정치 조정 후보는 Issue #33에 있습니다.
+- GitHub token이 무효(401)이면 staging 당시에는 사용자 프로필 조회부터 실패해 사용자가 `failed`로 표시됐습니다. Issue #35에서 401을 1시간 `paused`와 `*.token_rejected` 오류 로그로 바꿨습니다([`refresh.md`](./refresh.md)). 처리량 조정 후보는 Issue #33에 있습니다.
