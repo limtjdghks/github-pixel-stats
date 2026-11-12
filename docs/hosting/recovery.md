@@ -47,7 +47,7 @@ node --env-file=.env.ops --import tsx src/cli/ops.ts status
 
 2026-10-24 staging에서 위 절차를 확인했습니다. 다음 조건이 필요합니다.
 
-- `vercel env pull`이 받는 OIDC token은 development 환경용입니다. 두 store를 프로젝트의 development 환경에도 연결해야 CLI가 store에 접근합니다. 연결하지 않으면 `OIDC is enabled for this project, but not for the "development" environment.`로 실패합니다. 운영 store를 development에 연결할지는 HOST-13 ②에서 정합니다.
+- `vercel env pull`이 받는 OIDC token은 development 환경용입니다. 두 store를 프로젝트의 development 환경에도 연결해야 CLI가 store에 접근합니다. 연결하지 않으면 `OIDC is enabled for this project, but not for the "development" environment.`로 실패합니다. 운영 store도 development 환경에 연결했습니다([`production.md`](./production.md#환경-변수)).
 - `BLOB_PRIVATE_STORE_ID`·`BLOB_PUBLIC_STORE_ID`는 Secret이 아니므로 일반(`--no-sensitive`) 환경 변수로 둡니다. Sensitive 값은 `env pull`에서 `[SENSITIVE]`로만 내려와 CLI가 `Invalid Blob store configuration.`으로 실패합니다.
 - 받은 OIDC token은 약 12시간 뒤 만료됩니다. 만료되면 `vercel env pull`을 다시 실행합니다. `.env.ops`에는 OIDC token과 store 연결 시 자동 생성되는 `BLOB_READ_WRITE_TOKEN`이 함께 들어가므로 작업이 끝나면 지웁니다.
 
@@ -123,10 +123,10 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 | Blob 일시 장애 | 발행 전 사용자 `unavailable`. Cron 500(목록 조회 실패) 또는 `errors` 증가 | 발행 카드는 CDN cache와 SWR로 계속 응답. `unavailable`은 cache하지 않음 | Vercel status 확인. 복구 뒤 다음 Cron이 이어서 처리. 필요하면 Cron을 수동 실행 |
 | Blob 포함량 초과 | 모든 Blob 요청 실패. 30일 동안 접근 불가 | 일일 예산 guard가 Cron·bootstrap 몫을 막지만, 카드 읽기·CLI·dashboard 사용은 막지 않음 | Usage에서 원인 확인. 기다리거나 Pro 전환. [`operations.md`](./operations.md)의 처리량 절 검토 |
 | GitHub rate limit·5xx | `paused` 증가, `stopped: "rate-limit"` | reset까지 대기, 5xx는 backoff 3회 | 대개 없음. 반복되면 Cron 요청 상한 검토 |
-| GitHub token 만료·폐기(401) | `cron.token_rejected`·`bootstrap.token_rejected` 오류 로그, Cron `stopped: "token-rejected"` | 사용자를 `failed`로 표시하지 않고 1시간 `paused`. 미발행 사용자는 `pending`, 발행 사용자는 마지막 성공 카드 유지. 실패 표시가 없으므로 7일 정리 대상도 아님 | `GH_STATS_TOKEN`을 교체하고 다시 배포. 401을 받은 사용자는 받은 시각부터 1시간(`TOKEN_REJECTED_PAUSE_MS`)이 지나야 카드 요청이나 Cron으로 재개됨. 그 전에 Cron을 수동 실행하면 아직 시도하지 않은 사용자만 이어서 처리함 |
+| GitHub token 만료·폐기(401) | `cron.token_rejected`·`bootstrap.token_rejected` 오류 로그, Cron `stopped: "token-rejected"` | 사용자를 `failed`로 표시하지 않고 1시간 `paused`. 미발행 사용자는 `pending`, 발행 사용자는 마지막 성공 카드 유지. 실패 표시가 없으므로 7일 정리 대상도 아님 | `GH_STATS_TOKEN`을 교체하고 다시 배포(발급 기준은 [`production.md`](./production.md#github-token)). 401을 받은 사용자는 받은 시각부터 1시간(`TOKEN_REJECTED_PAUSE_MS`)이 지나야 카드 요청이나 Cron으로 재개됨. 그 전에 Cron을 수동 실행하면 아직 시도하지 않은 사용자만 이어서 처리함 |
 | GitHub token 권한 부족(403) | 프로필·저장소·검색 단계의 403으로 `failed`. 실패 표시 급증 | 미발행 사용자는 실패 표시 7일 뒤 정리됨. 발행 사용자는 마지막 성공 카드 유지. 커밋 상세의 403은 그 커밋만 건너뜀 | token 권한을 확인해 교체. **7일 안에 교체하지 않으면 그동안 실패한 미발행 사용자의 등록이 지워짐** |
 | Cron 누락·실패 | `cron.completed` 로그 없음, 또는 `cron.failed` | 다음 실행이 due 판정으로 회복. 실패한 invocation은 Vercel이 재시도하지 않음 | 원인 확인 뒤 dashboard의 Cron Jobs에서 수동 실행하거나 `Authorization: Bearer $CRON_SECRET`으로 `/api/cron` 호출 |
-| 잘못된 배포(코드) | 오류 증가, 카드 이상 | 없음 | Vercel에서 이전 deployment로 instant rollback. CDN cache는 deployment별이라 이전 deployment의 항목이 다시 쓰일 수 있음 |
+| 잘못된 배포(코드) | 오류 증가, 카드 이상 | 없음 | Vercel에서 이전 deployment로 instant rollback. CDN cache는 deployment별이라 이전 deployment의 항목이 다시 쓰일 수 있음. rollback하면 Production 도메인 자동 할당이 꺼지므로 수정 배포 뒤 promote로 다시 켬([`production.md`](./production.md#rollback)) |
 | 잘못된 카드 발행(renderer·데이터) | 특정 사용자 카드 이상 | 없음 | 원인 수정·배포 뒤 해당 사용자 `rollback`. 여러 사용자면 사용자별로 실행 |
 | 발행이 계속 실패 | `publishFailures` 반복, `status`의 `stuck` | 마지막 성공 카드 유지 | 위 "발행이 멈춘 사용자" 절차 |
 | manifest 손상 | 그 사용자 카드 `unavailable`, Cron에서 그 사용자 오류 | 없음. CLI `rollback`도 manifest를 읽지 못해 실패 | dashboard에서 그 manifest 객체를 지움. 사용자는 미발행 상태가 되어 checkpoint로 다시 수집·발행됨 |

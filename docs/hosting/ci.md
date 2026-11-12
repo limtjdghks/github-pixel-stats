@@ -41,11 +41,11 @@ npm run validate:vercel-output
 | --- | --- | --- | --- |
 | `ci.yml` | `pull_request`, `dev`·`main` push | 없음 | `contents: read`, checkout credential 미보존 |
 | `refresh.yml`(legacy 개인 Pages) | 매일 `18:17 UTC` schedule, 수동 실행 | `GH_STATS_TOKEN`(collect job만) | job별 최소 권한 |
-| Vercel 호스팅 배포 | Vercel Git 연동(HOST-13에서 연결) | Vercel 환경 변수(Production만 운영값) | Vercel이 관리 |
+| Vercel 호스팅 배포 | Vercel Git 연동(`main` push는 Production, 그 밖의 push·PR은 Preview) | Vercel 환경 변수(Production만 운영값) | Vercel이 관리 |
 
 - `pull_request_target`·`workflow_run`처럼 fork 코드를 base 저장소 권한이나 Secret과 함께 실행하는 트리거는 쓰지 않습니다. GitHub는 fork에서 연 `pull_request`에 Secret을 넘기지 않고 `GITHUB_TOKEN`을 읽기 전용으로 줍니다.
 - `refresh.yml`은 PR에서 실행되지 않습니다. fork에서는 schedule이 기본으로 비활성입니다.
-- 운영 `GH_STATS_TOKEN`·`CRON_SECRET`·Blob store ID는 Vercel Production 환경에만 둡니다([`function-setup.md`](./function-setup.md)). fork PR의 Vercel Preview 배포 보호(Git Fork Protection) 설정 확인은 HOST-13 범위입니다.
+- 운영 `GH_STATS_TOKEN`·`CRON_SECRET`·Blob store ID는 Vercel Production 환경에만 둡니다([`function-setup.md`](./function-setup.md)). fork PR의 Preview 배포는 Vercel이 운영자 승인을 받은 뒤에만 실행하며, Preview에는 운영 값이 없습니다([`production.md`](./production.md#git-연동과-preview)).
 
 ## Action 고정과 업데이트 정책
 
