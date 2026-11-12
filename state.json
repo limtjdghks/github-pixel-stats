@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-11-10T01:36:26.000Z",
+  "updatedAt": "2026-11-12T00:47:26.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -7097,55 +7097,6 @@
       "languages": [
         "Other"
       ]
-    },
-    "943065199:348ae24925ef1dcf97a52751a7d9ae09ce5b99de": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "348ae24925ef1dcf97a52751a7d9ae09ce5b99de",
-      "authoredAt": "2025-11-12T05:01:29.000+09:00",
-      "languages": []
-    },
-    "943065199:4cf9c0afcfa00f8c3f0cde06820bae7cc2698e98": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "4cf9c0afcfa00f8c3f0cde06820bae7cc2698e98",
-      "authoredAt": "2025-11-12T04:34:17.000+09:00",
-      "languages": []
-    },
-    "943065199:5f8a2a26c672304c0323b928e3506257278629a8": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "5f8a2a26c672304c0323b928e3506257278629a8",
-      "authoredAt": "2025-11-12T04:40:32.000+09:00",
-      "languages": []
-    },
-    "943065199:8f91238434fedcaff3bc4de4059f52d0633647eb": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "8f91238434fedcaff3bc4de4059f52d0633647eb",
-      "authoredAt": "2025-11-12T04:44:04.000+09:00",
-      "languages": []
-    },
-    "943065199:b27f8b0f92fdd6e7ae9dcb3d5ff49021bb7d5843": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "b27f8b0f92fdd6e7ae9dcb3d5ff49021bb7d5843",
-      "authoredAt": "2025-11-12T04:37:13.000+09:00",
-      "languages": []
-    },
-    "943065199:f19090a7c2dc891e5d89da7e9fe9ff298ff9f9ec": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "f19090a7c2dc891e5d89da7e9fe9ff298ff9f9ec",
-      "authoredAt": "2025-11-12T04:58:07.000+09:00",
-      "languages": []
-    },
-    "943065199:f4878192c5cbaa1286a6ffeed4757821f122ef37": {
-      "repositoryId": 943065199,
-      "repository": "DMU-NextLevel/.github",
-      "sha": "f4878192c5cbaa1286a6ffeed4757821f122ef37",
-      "authoredAt": "2025-11-12T04:49:27.000+09:00",
-      "languages": []
     },
     "950072186:0097117f8b279ef4dd1440d1863b6d7060cabf8b": {
       "repositoryId": 950072186,
