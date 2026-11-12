@@ -4,3 +4,6 @@ build/
 .state/
 .DS_Store
 *.log
+.vercel/
+.env
+.env.*

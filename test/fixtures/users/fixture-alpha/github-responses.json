@@ -107,7 +107,7 @@
   "userProfile": {
     "path": "/users/fixture-alpha",
     "query": {},
-    "body": { "public_repos": 4 }
+    "body": { "login": "fixture-alpha", "public_repos": 4 }
   },
   "ownedRepositories": {
     "path": "/users/fixture-alpha/repos",
@@ -144,6 +144,7 @@
     ]
   },
   "expectedProfileStats": {
+    "login": "fixture-alpha",
     "publicRepositories": 4,
     "stars": 7
   }

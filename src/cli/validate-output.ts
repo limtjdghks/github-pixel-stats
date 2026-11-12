@@ -6,13 +6,13 @@ import { validateGeneratedOutput } from "../validation/output.js";
 import { parseFileOptions } from "./options.js";
 
 async function main(): Promise<void> {
-  const options = parseFileOptions(process.argv.slice(2));
+  const options = parseFileOptions(process.argv.slice(2), process.env.GITHUB_USERNAME);
   const [dataSource, statsSvg, languagesSvg, preview, loadedState, classifier] = await Promise.all([
     readFile(join(options.outputPath, "data.json"), "utf8"),
     readFile(join(options.outputPath, "stats.svg"), "utf8"),
     readFile(join(options.outputPath, "languages.svg"), "utf8"),
     readFile(join(options.outputPath, "index.html"), "utf8"),
-    loadState(options.statePath),
+    loadState(options.statePath, options.username),
     LinguistClassifier.loadDefault(),
   ]);
   const snapshot = JSON.parse(dataSource) as unknown;
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
     throw new Error("The next collector state is missing or incompatible.");
   }
   validateGeneratedOutput({
+    expectedUsername: options.username,
     snapshot,
     state: loadedState.state,
     statsSvg,

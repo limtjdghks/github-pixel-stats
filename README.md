@@ -1,75 +1,121 @@
+<div align="center">
+
 # GitHub Pixel Stats
 
-GitHub Pixel Stats collects `limtjdghks`'s public GitHub activity and publishes two independent SVG cards for profile READMEs. The cards combine a pixel-style typeface and mascot with a soft grid layout, while the language card visualizes usage as segmented bars instead of raw totals.
+**Pixel-art GitHub stats cards for your profile README.**<br>
+No sign-up, no token, no fork — just your username in a URL.
 
-The cards use the approved stepped pixel frames, a white cat in a dark hoodie, and dimensions of `570 × 300` and `355 × 300`. The stats footer shows real daily activity: one cell per UTC author date, seven rows per week, including zero-commit days. The first and last dates can be partial days because the rolling collection period has exact timestamps. Each cell includes its date and commit count, and `data.json` exposes the same values in `activity.days`.
+[![CI](https://github.com/limtjdghks/github-pixel-stats/actions/workflows/ci.yml/badge.svg)](https://github.com/limtjdghks/github-pixel-stats/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Published cards
+<img src="docs/images/stats.svg" width="570" alt="Stats card with commits, public repositories, stars, a daily activity grid and a pixel cat mascot" />
+<img src="docs/images/languages.svg" width="355" alt="Language card with the five most committed languages as segmented bars" />
 
-The GitHub Pages deployment exposes these files:
+</div>
 
-- `stats.svg`: commits, owned public repositories, stars on owned non-fork repositories, and the pixel mascot
-- `languages.svg`: the most committed languages shown as 10-segment bars
-- `data.json`: the machine-readable snapshot used to render both cards
-- `index.html`: a preview of the published cards
+> [!NOTE]
+> The hosted service is launching soon. Until then, `<service-host>` in the examples below is a placeholder for its domain.
 
-The snapshot covers the latest 12 months. Commit discovery is limited to public repositories and their default branches. A commit that touches one or more files of a language counts once for that language, so language totals can exceed the total number of unique commits. Each language share uses the sum of commit counts across **all** classified languages as its denominator, while only the top five languages are displayed. Bars show `round(share × 10)` filled cells with a minimum of one for a nonzero language. One cell is therefore a minimum visibility marker for shares below 10%, not an exact percentage.
+## Features
 
-## Repository setup
+- **Just a URL.** Put your GitHub username in the card URL and you are done. There is nothing to install, authorize or keep running.
+- **Pixel-art look.** Stepped pixel frames, the NeoDunggeunmo Pro pixel typeface and a white cat in a dark hoodie.
+- **Your year at a glance.** Commits over the last 12 months with a grid of one cell per day, alongside your public repositories and stars.
+- **Languages you actually write.** Languages are ranked by the commits that touch them, not by bytes of code, and drawn as 10-segment bars.
+- **A card instead of a broken image.** New usernames get a friendly placeholder card, problems show a short status card, and if an update fails your last good card stays up.
+- **Public data only.** Only public repositories are read. Nothing private is collected, and you can ask for your data to be removed.
 
-1. Create a public repository and add this project to its default branch.
-2. Create a fine-grained personal access token for `limtjdghks`. Keep repository access read-only and do not grant write access. Fine-grained tokens include read-only access to public repositories, which lets the collector inspect public contributions across repository owners.
-3. Save the token as a repository Actions secret named `GH_STATS_TOKEN` under **Settings → Secrets and variables → Actions**.
-4. Open **Settings → Pages** and select **GitHub Actions** as the build and deployment source.
-5. Run **Refresh GitHub pixel stats** once from the **Actions** tab to create the first deployment and bootstrap the `stats-state` branch.
+## Quick start
 
-The token is used only by the collection job. GitHub Pages deployment uses the short-lived repository `GITHUB_TOKEN` with only `pages: write` and `id-token: write` permissions.
-
-## Refresh workflow
-
-The workflow runs every day at `18:17 UTC` (`03:17 Asia/Seoul`) and can also be started with **Run workflow** from the Actions tab. Only one refresh runs at a time, and an active Pages deployment is never canceled by a newer run.
-
-The jobs run in this order:
-
-1. `collect` restores `state.json` when the `stats-state` branch exists, installs dependencies with Node.js 24, type-checks the project, generates the snapshot and SVGs, validates all output, and uploads the deployment artifacts.
-2. `persist-state` updates `stats-state/state.json` after collection succeeds. It creates the branch as an orphan on the first successful run and commits only when the state has changed.
-3. `deploy` publishes the validated `dist` directory to the `github-pages` environment after the state is safely persisted.
-
-If `stats-state` exists without `state.json`, collection fails instead of silently rebuilding from an invalid cache. If collection, generation, or validation fails, deployment is skipped and the previous successful Pages output remains active.
-
-## Add the cards to a profile README
-
-Replace `github-pixel-stats` if the service repository uses a different name.
+Add these lines to your profile README and replace `<username>` with your GitHub username.
 
 ```html
-<img
-  src="https://limtjdghks.github.io/github-pixel-stats/stats.svg"
-  width="570"
-  alt="limtjdghks GitHub activity"
-/>
+<img src="https://<service-host>/<username>/stats.svg" width="570" alt="<username>'s GitHub activity" />
+<img src="https://<service-host>/<username>/languages.svg" width="355" alt="<username>'s most committed languages" />
 ```
 
-The language card is a separate image and can be placed independently.
+Prefer Markdown?
 
-```html
-<img
-  src="https://limtjdghks.github.io/github-pixel-stats/languages.svg"
-  width="355"
-  alt="limtjdghks most committed languages"
-/>
+```markdown
+![GitHub activity](https://<service-host>/<username>/stats.svg)
+![Most committed languages](https://<service-host>/<username>/languages.svg)
 ```
 
-To place both cards on one row, wrap the two images in the same paragraph and keep their widths at `570` and `355`.
+The two cards are independent, so you can use either one alone. Keep both images in the same paragraph to show them side by side.
 
-## Operations
+The first time a username is requested, the card says **PREPARING** while its stats are collected. This can take a while, especially for very active accounts, so check back later.
 
-- Scheduled workflows may be delayed during periods of high GitHub Actions load. The manual trigger is the recovery path when a scheduled run is delayed or dropped.
-- GitHub automatically disables scheduled workflows in public repositories after 60 days without repository activity. Re-enable the workflow from the Actions tab and run it manually.
-- Renew `GH_STATS_TOKEN` before it expires. An expired token fails collection without replacing the published cards.
-- Treat `stats-state/state.json` as generated state and do not edit it manually.
-- The internal next-state artifact is retained for one day and is not a long-term backup. The `stats-state` branch is the durable collector state.
-- `data.json` and the state branch contain only data derived from public GitHub activity. Never add tokens, email addresses, or private repository data to generated output.
+## Customization
 
-## Source data and font
+### Mascot
 
-Language metadata and representative colors come from GitHub Linguist 9.7.0. The embedded pixel typeface is [NeoDunggeunmo Pro](https://github.com/neodgm/neodgm-pro-webfont), pinned to webfont-kit commit `1751c2981808869750c7df391c1d2b486e978f12`. Their license texts are included in `third_party/`.
+Choose the mascot on the stats card with the `mascot` query parameter.
+
+```text
+https://<service-host>/<username>/stats.svg?mascot=cat
+```
+
+| ID | Mascot |
+| --- | --- |
+| `cat` (default) | A white cat in a dark hoodie |
+
+Only the cat is available today, so you can leave the parameter out. Unknown IDs fall back to the cat. Want to draw a new mascot? See [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-mascot).
+
+## How it works
+
+1. Your README asks the service for `/<username>/stats.svg`.
+2. If cards for that username are already published, they are returned from the CDN.
+3. If not, you get a PREPARING card, and the service starts collecting public activity from the GitHub API in the background.
+4. Collected stats are rendered into SVG cards, validated, and published. A scheduled job keeps published cards up to date.
+
+Nothing is rendered while your README loads, so the cards stay fast no matter how much history an account has.
+
+## FAQ
+
+<details>
+<summary><b>What counts as a commit?</b></summary>
+
+Commits authored by you in public repositories during the last 12 months, on each repository's default branch. Stars count only repositories you own that are not forks. If GitHub refuses to show a commit's changed files (for example, because the repository's organization restricts token access, or the commit was removed), the commit still counts but adds no language.
+</details>
+
+<details>
+<summary><b>Why do the language bars add up to more than 10 segments?</b></summary>
+
+A commit counts once for every language whose files it changes, so one commit can count for several languages. Each bar shows that language's share of all language counts, rounded to a whole number of its 10 segments. Every language shown gets at least one segment, even if its share is under 10%, so small languages stay visible. Because of this minimum and the rounding, the bars can add up to more than 10 segments.
+</details>
+
+<details>
+<summary><b>My card shows a message instead of stats. What does it mean?</b></summary>
+
+| Message | Meaning |
+| --- | --- |
+| PREPARING | Stats are being collected. Check back later. |
+| NO STATS | Stats could not be built, usually because the username does not exist. |
+| AT CAPACITY | The service is not accepting new usernames right now. Try again later. |
+| REMOVED | The account owner asked for the stats to be removed. |
+| INVALID USER | The URL does not contain a valid GitHub username. |
+| UNAVAILABLE | The service is temporarily unavailable. |
+</details>
+
+<details>
+<summary><b>Why hasn't my card changed yet?</b></summary>
+
+Cards are cached by the service's CDN, by browsers and by GitHub's image proxy, so an update can take a while to show up.
+</details>
+
+## Privacy
+
+Cards are built only from public GitHub data, and the service sets no cookies and does not track people who view your README. See [PRIVACY.md](PRIVACY.md) for what is stored, how long it is kept, and how to have your data removed.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome, and so are new mascots. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
+## Credits
+
+- Pixel typeface: [NeoDunggeunmo Pro](https://github.com/neodgm/neodgm-pro-webfont) by Eunbin Jeong (SIL Open Font License 1.1)
+- Language names and colors: [GitHub Linguist](https://github.com/github-linguist/linguist) (MIT)
+
+## License
+
+GitHub Pixel Stats is released under the [MIT License](LICENSE). The bundled font and language data keep their own licenses; see [third_party/README.md](third_party/README.md).

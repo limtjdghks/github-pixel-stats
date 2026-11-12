@@ -56,7 +56,7 @@
   "userProfile": {
     "path": "/users/fixture-beta",
     "query": {},
-    "body": { "public_repos": 1 }
+    "body": { "login": "fixture-beta", "public_repos": 1 }
   },
   "ownedRepositories": {
     "path": "/users/fixture-beta/repos",
@@ -76,6 +76,7 @@
     ]
   },
   "expectedProfileStats": {
+    "login": "fixture-beta",
     "publicRepositories": 1,
     "stars": 0
   }

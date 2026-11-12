@@ -25,7 +25,7 @@ export function renderLanguagesCard(snapshot: StatsSnapshot): string {
     : "No language data is available for the selected period.";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="languages-title languages-desc" shape-rendering="crispEdges">
 <title id="languages-title">${escapeXml(snapshot.username)} most committed languages</title>
-<desc id="languages-desc">${escapeXml(snapshot.period.label)}. ${escapeXml(description)}</desc>
+<desc id="languages-desc">${escapeXml(snapshot.username)}. ${escapeXml(snapshot.period.label)}. ${escapeXml(description)}</desc>
 <defs>${renderFontStyles()}${renderFrameDefs(width, height)}</defs>
 ${renderFrame(width, height)}
 <g clip-path="url(#panel-clip)">

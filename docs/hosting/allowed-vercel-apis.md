@@ -6,12 +6,13 @@
 
 ## SDK 상태
 
-현재 `@vercel/functions`와 `@vercel/blob`은 `package.json`과 `package-lock.json`에 설치되어 있지 않습니다. 2026-09-12 npm registry 조회 결과인 아래 버전은 후속 구현을 위한 참고 기준이며, 이번 작업에서 의존성으로 추가하지 않습니다.
+`@vercel/blob`은 GPS-HOST-06에서 `2.8.2`로, OIDC token 조회용 `@vercel/oidc`는 `3.8.10`으로 고정 설치했습니다. `@vercel/functions`는 GPS-HOST-08에서 `3.9.11`로 고정 설치했습니다(2026-10-21 확인, 당시 최신 `3.10.1`은 공개 2주 미만이라 제외).
 
-| 패키지 | 참고 버전 | 실제 설치·타입 재확인 시점 |
+| 패키지 | 버전 | 상태 |
 | --- | ---: | --- |
-| `@vercel/functions` | `3.9.7` | GPS-HOST-05 |
-| `@vercel/blob` | `2.8.0` | GPS-HOST-06 |
+| `@vercel/functions` | `3.9.11` | 설치, GPS-HOST-08 |
+| `@vercel/blob` | `2.8.2` | 설치, GPS-HOST-06 |
+| `@vercel/oidc` | `3.8.10` | 설치, GPS-HOST-06 |
 
 후속 Issue를 시작할 때 공식 문서와 실제 설치 버전의 TypeScript 선언을 다시 확인합니다. 이 문서의 참고 버전만 보고 존재하지 않는 API나 옵션을 추정하지 않습니다.
 
@@ -107,6 +108,7 @@ del([urlOrPathname], options);
 - `CDN-Cache-Control`은 Vercel을 포함한 CDN 동작을 지정합니다.
 - `Vercel-CDN-Cache-Control`은 Vercel CDN에만 적용되며 응답이 클라이언트에 전달되기 전에 소비됩니다.
 - [`x-vercel-cache`](https://vercel.com/docs/headers/response-headers#x-vercel-cache)는 Vercel CDN 상태를 나타냅니다. `HIT`, `MISS`, `STALE`, `PRERENDER`, `REVALIDATED`, `BYPASS`를 관측해 설정이 실제로 적용됐는지 확인합니다.
+- GPS-HOST-09는 카드 Function 응답에 `Cache-Control`(브라우저·이미지 proxy)과 `Vercel-CDN-Cache-Control`(Vercel CDN)을 함께 붙입니다. 다른 CDN에 전달되는 `CDN-Cache-Control`은 쓰지 않습니다. 값은 [`card-route.md`](./card-route.md)에 있습니다.
 
 ### Secret
 
@@ -119,6 +121,8 @@ del([urlOrPathname], options);
 ### WAF rate limit
 
 [WAF Rate Limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)에 따라 rate-limit rule은 요청 출처별 window와 limit을 설정하고 후속 action을 선택합니다. `Log`는 요청을 차단하지 않으므로 먼저 영향과 정상 트래픽을 관측하는 단계에 사용합니다. 관측 결과를 검토한 뒤 기본 `429` 또는 `Deny` action을 적용합니다.
+
+GPS-HOST-10에서 다시 확인한 결과(2026-10-21) Hobby는 프로젝트당 rate-limit rule 1개, fixed window 10초~10분, counting key IP·JA4 digest이며 rule은 dashboard에서 만들어 production deployment에 publish합니다. counter는 region별입니다. 이 프로젝트의 초기 설정안은 [`abuse-defense.md`](./abuse-defense.md)에 있습니다.
 
 ## 금지 패턴
 

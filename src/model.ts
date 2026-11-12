@@ -1,4 +1,3 @@
-export const USERNAME = "limtjdghks" as const;
 export const STATE_SCHEMA_VERSION = 1 as const;
 export const SNAPSHOT_SCHEMA_VERSION = 1 as const;
 export const CLASSIFIER_VERSION = 1 as const;
@@ -18,7 +17,7 @@ export interface CachedCommit extends SearchCommit {
 
 export interface CollectorState {
   schemaVersion: typeof STATE_SCHEMA_VERSION;
-  username: typeof USERNAME;
+  username: string;
   classifier: {
     version: typeof CLASSIFIER_VERSION;
     linguistVersion: typeof LINGUIST_VERSION;
@@ -45,7 +44,7 @@ export interface DailyActivity {
 
 export interface StatsSnapshot {
   schemaVersion: typeof SNAPSHOT_SCHEMA_VERSION;
-  username: typeof USERNAME;
+  username: string;
   generatedAt: string;
   period: {
     from: string;
@@ -69,6 +68,11 @@ export interface CollectionMetrics {
   searchedCommits: number;
   cacheHits: number;
   fetchedCommits: number;
+  /**
+   * `fetchedCommits` 중 상세를 조회할 수 없어 언어 없이 저장한 커밋 수입니다(`isUnavailableCommitDetail()`).
+   * 이 커밋도 커밋 수·활동일에는 들어가며, 언어 없이 cache되므로 다음 수집에서 다시 조회하지 않습니다.
+   */
+  skippedCommits: number;
   removedCommits: number;
 }
 
