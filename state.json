@@ -5,7 +5,7 @@
     "version": 1,
     "linguistVersion": "9.7.0"
   },
-  "updatedAt": "2026-11-12T00:47:26.000Z",
+  "updatedAt": "2026-11-12T23:41:06.000Z",
   "commits": {
     "1054572471:1abb2c7159ce74b6b6072f11d52e979713548870": {
       "repositoryId": 1054572471,
@@ -2105,6 +2105,15 @@
         "TypeScript"
       ]
     },
+    "1167236879:b2cd36e0637ceb2f2ff5efbd76e2e722423f4646": {
+      "repositoryId": 1167236879,
+      "repository": "team-ieum/ieum-frontend",
+      "sha": "b2cd36e0637ceb2f2ff5efbd76e2e722423f4646",
+      "authoredAt": "2026-11-10T22:45:06.000+09:00",
+      "languages": [
+        "TypeScript"
+      ]
+    },
     "1167236879:b34f61d58203426eb1f13ad878282882bf9a274c": {
       "repositoryId": 1167236879,
       "repository": "team-ieum/ieum-frontend",
@@ -2708,6 +2717,15 @@
       "repository": "team-ieum/ieum-frontend",
       "sha": "f03a8415d5e25e2562e4a255ea4568debff8c1ed",
       "authoredAt": "2026-10-21T20:40:01.000+09:00",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    "1167236879:f0712d601b8437d4e7fb3ecfbd8eba04263f24f8": {
+      "repositoryId": 1167236879,
+      "repository": "team-ieum/ieum-frontend",
+      "sha": "f0712d601b8437d4e7fb3ecfbd8eba04263f24f8",
+      "authoredAt": "2026-11-10T22:44:47.000+09:00",
       "languages": [
         "TypeScript"
       ]
@@ -6494,6 +6512,17 @@
         "Swift"
       ]
     },
+    "1362917955:09bf7bbda3d806ae7bbe734a499fe33a154c2c69": {
+      "repositoryId": 1362917955,
+      "repository": "limtjdghks/github-pixel-stats",
+      "sha": "09bf7bbda3d806ae7bbe734a499fe33a154c2c69",
+      "authoredAt": "2026-11-13T02:08:08.000+09:00",
+      "languages": [
+        "HTML",
+        "Other",
+        "TypeScript"
+      ]
+    },
     "1362917955:146b1f53819b3591ee8bdf9a63c80a24d42654a0": {
       "repositoryId": 1362917955,
       "repository": "limtjdghks/github-pixel-stats",
@@ -7034,6 +7063,15 @@
         "Swift"
       ]
     },
+    "1444569016:1099376414299fcbf373cca4a48fc57e5535f214": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "1099376414299fcbf373cca4a48fc57e5535f214",
+      "authoredAt": "2026-11-10T01:42:55.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
     "1444569016:2bd696bba9b492d4cc8b90878a886a5ed0859a3e": {
       "repositoryId": 1444569016,
       "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
@@ -7066,6 +7104,15 @@
       "authoredAt": "2026-11-03T17:49:04.000Z",
       "languages": []
     },
+    "1444569016:649c015a0620e90d85fcf52d7fd0f4f536d70c51": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "649c015a0620e90d85fcf52d7fd0f4f536d70c51",
+      "authoredAt": "2026-11-10T22:11:01.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
     "1444569016:7f04bd1362935cbac8d79b74aa2ed07492c3f826": {
       "repositoryId": 1444569016,
       "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
@@ -7082,12 +7129,30 @@
         "Other"
       ]
     },
+    "1444569016:ad86c531752d356d59b38bbd11aafeb8bec6ce1d": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "ad86c531752d356d59b38bbd11aafeb8bec6ce1d",
+      "authoredAt": "2026-11-12T21:06:15.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
     "1444569016:bf697f5ffcca3381dda6ed69fd63a9f712770b18": {
       "repositoryId": 1444569016,
       "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
       "sha": "bf697f5ffcca3381dda6ed69fd63a9f712770b18",
       "authoredAt": "2026-11-03T17:49:05.000Z",
       "languages": []
+    },
+    "1444569016:c41a01f2671d525a5296fa900661970490a494b0": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "c41a01f2671d525a5296fa900661970490a494b0",
+      "authoredAt": "2026-11-10T02:30:53.000+09:00",
+      "languages": [
+        "Swift"
+      ]
     },
     "1444569016:c6fe929350cd6396c8221cdd8a759e9b006ca7c1": {
       "repositoryId": 1444569016,
@@ -7096,6 +7161,24 @@
       "authoredAt": "2026-11-03T17:49:05.000Z",
       "languages": [
         "Other"
+      ]
+    },
+    "1444569016:ca5cf35848b955ba78f5e417c84dffcf5d0bd65f": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "ca5cf35848b955ba78f5e417c84dffcf5d0bd65f",
+      "authoredAt": "2026-11-12T22:42:46.000+09:00",
+      "languages": [
+        "Swift"
+      ]
+    },
+    "1444569016:d94031b515063b04f7fa27a748ce7ef828609740": {
+      "repositoryId": 1444569016,
+      "repository": "SOPT-all/39-COLLABORATION-iOS-DAISOMALL",
+      "sha": "d94031b515063b04f7fa27a748ce7ef828609740",
+      "authoredAt": "2026-11-10T02:30:39.000+09:00",
+      "languages": [
+        "Swift"
       ]
     },
     "950072186:0097117f8b279ef4dd1440d1863b6d7060cabf8b": {
