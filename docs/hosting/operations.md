@@ -44,16 +44,19 @@ UTC 하루 단위입니다. 값은 `usage-policy.ts` 상수로만 바꿉니다.
 | --- | ---: | --- |
 | `DAILY_ADVANCED_BUDGET` | 60 | Cron·bootstrap 합계. 월 2,000회(하루 약 64회)에서 대시보드·운영 작업 몫을 뺀 값 |
 | `BOOTSTRAP_DAILY_ADVANCED_BUDGET` | 26 | 그중 bootstrap 몫. 발행까지 끝나는 bootstrap 약 2회 |
-| `JOB_ADVANCED_ESTIMATE` | 12 | 발행까지 끝나는 job 하나의 추정치 |
+| `JOB_ADVANCED_ESTIMATE` | 10 | 발행까지 끝나는 job 하나의 추정치 |
 
 job 하나의 추정치는 다음 작업의 합입니다.
 
 | 작업 | 횟수 |
 | --- | ---: |
-| 등록 기록 등록(bootstrap) | 1 |
-| checkpoint lease 획득·진행·완료 저장 | 2~3 |
+| 등록 기록 등록(bootstrap만) | 1 |
+| checkpoint lease 획득·완료 저장 | 2 |
 | 발행 쓰기(snapshot, state, 카드 2개, manifest) | 5 |
 | 퇴역 release 정리 list(private·public) | 2 |
+
+- 테스트 fake Blob으로 잰 값은 첫 요청에서 발행까지 끝나는 bootstrap 10회, 발행 사용자를 갱신·재발행하는 Cron job 9회입니다. staging에서 잰 bootstrap 1~4회는 발행 없이 `paused`로 끝난 실행이라 추정치의 근거로 쓰지 않습니다.
+- 수집이 10초(`CHECKPOINT_SAVE_INTERVAL_MS`)를 넘으면 진행 저장이 10초마다 1회씩 늘어, 사용자당 60초를 쓰는 Cron의 긴 job은 약 14회까지 씁니다. 추정치는 다음 job을 시작할지만 정하므로, 이런 job이 예산의 마지막에 오면 그날 예산을 몇 회 넘을 수 있습니다.
 
 - Cron은 시작할 때 오늘 기록을 읽어 남은 몫(`DAILY_ADVANCED_BUDGET` − 오늘 합계 − 기록 쓰기 1)을 구합니다. 이번 실행이 쓴 작업에 추정치를 더한 값이 남은 몫을 넘으면 다음 사용자를 시작하지 않고 `stopped: "blob-budget"`으로 끝납니다. 시작할 때의 목록 조회 2회도 이번 실행 작업에 들어갑니다.
 - bootstrap은 등록 전에 오늘 기록을 읽어, 전체 예산과 bootstrap 몫 모두에 추정치와 기록 쓰기 1회가 들어갈 때만 진행합니다. 들어가지 않으면 등록하지 않고 `bootstrap.skipped` 로그만 남기며, 그 사용자는 다음 카드 요청이나 날짜가 바뀐 뒤 다시 시도됩니다. 이미 등록된 미발행 사용자는 Cron이 이어서 수집합니다.
@@ -114,8 +117,10 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 | `bootstrap.completed` | info | `status`, `publish`, `requests`, `blobAdvanced`(기록 쓰기를 뺀 이 실행의 Advanced 수) |
 | `bootstrap.skipped` | info | `reason: "blob-budget"` |
 | `bootstrap.failed`, `bootstrap.usage_update_failed` | error | `error` |
+| `bootstrap.token_rejected` | error | 없음. GitHub가 `GH_STATS_TOKEN`을 거부(401)해 수집을 1시간 멈춤 |
 | `cron.completed` | info | Cron 응답 집계, `blobAdvanced`, `blobSimple`, `dailyAdvanced`, `dailyBudget` |
 | `cron.publish_failed` | error | `error`(수집이 끝난 결과의 발행 실패) |
+| `cron.token_rejected` | error | 없음. GitHub가 `GH_STATS_TOKEN`을 거부(401)해 이번 실행을 멈춤(`stopped: "token-rejected"`) |
 | `cron.failed`, `cron.refresh_failed`, `cron.expired_cleanup_failed`, `cron.admissions_*_failed`, `cron.usage_*_failed` | error | `error` |
 
 - `card.response`는 Function까지 온 요청만 남습니다. CDN hit은 Function을 거치지 않으므로, `card.response` 수를 실제 카드 조회 수로 보면 안 됩니다. 발행 카드의 `ready` 수가 CDN miss 수에 해당합니다.
@@ -124,7 +129,7 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 ## 확인 절차
 
 1. Vercel dashboard의 Usage에서 Blob Advanced·Simple Operations의 이번 달 누적을 확인합니다. 월 포함량의 80%에 가까우면 남은 날짜와 일일 예산을 비교합니다.
-2. Blob Observability에서 카드 응답 경로를 포함한 실제 작업 수를 확인하고, 일별 사용량 기록의 `blob.advanced`와 비교합니다. 차이가 크면 job 추정치나 집계 방식을 다시 봅니다. job 하나의 실제 값은 발행까지 끝난 `bootstrap.completed`의 `blobAdvanced`로 보고 `JOB_ADVANCED_ESTIMATE`(12)와 비교합니다.
+2. Blob Observability에서 카드 응답 경로를 포함한 실제 작업 수를 확인하고, 일별 사용량 기록의 `blob.advanced`와 비교합니다. 차이가 크면 job 추정치나 집계 방식을 다시 봅니다. job 하나의 실제 값은 발행까지 끝난 `bootstrap.completed`의 `blobAdvanced`로 보고 `JOB_ADVANCED_ESTIMATE`(10)와 비교합니다.
 3. Cron의 `cron.completed` 로그나 응답에서 `stopped`가 자주 `blob-budget`이면 처리량이 사용자 수보다 적다는 뜻입니다. freshness와 처리량 절의 선택지를 검토합니다.
 4. 일별 기록을 dashboard에서 열어 보는 것도 Advanced Operation입니다. 운영자 CLI의 `usage` 명령으로 읽습니다([`recovery.md`](./recovery.md)).
 

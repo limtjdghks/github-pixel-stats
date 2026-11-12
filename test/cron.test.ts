@@ -4,7 +4,7 @@ import { cronResponse } from "../src/hosting/cron-response.js";
 import { CRON_MIN_USER_BUDGET_MS, runCron, type CronLimits } from "../src/hosting/cron-run.js";
 import { runRefreshJob } from "../src/hosting/refresh-job.js";
 import { REFRESH_INTERVAL_MS } from "../src/hosting/refresh-policy.js";
-import { GitHubRequestError } from "../src/data/github-pages.js";
+import { GitHubRequestError, TOKEN_REJECTED_PAUSE_MS } from "../src/data/github-pages.js";
 import { bootstrapUser } from "../src/hosting/bootstrap.js";
 import { cardResponse } from "../src/hosting/card-response.js";
 import { admitUser, markAdmissionFailures } from "../src/hosting/admission-policy.js";
@@ -308,4 +308,30 @@ test("an unreadable or unwritable admission record is counted without stopping t
     const response = await cardResponse(new Request("https://example.test/alpha/stats.svg"), f.dependencies.stores);
     assert.equal(response.headers.get("X-Card-Status"), "ready", failing);
   }
+});
+
+test("a token rejected by GitHub stops the loop with an alert and leaves registered users unfailed", async () => {
+  const f = refreshFixture();
+  await register(f, "alpha", "beta");
+  await admit(f, ["alpha", "beta"]);
+  const request = f.dependencies.github.requestPage;
+  f.dependencies.github.requestPage = async () => { throw new GitHubRequestError("GitHub API 401", null, 401); };
+  const lines: string[] = [];
+  const originalError = console.error;
+  console.error = (line: unknown) => { lines.push(String(line)); };
+  let summary;
+  try {
+    summary = await runCron(limits(f.clock.now), f.dependencies);
+  } finally {
+    console.error = originalError;
+  }
+  assert.deepEqual([summary.processed, summary.requests, summary.stopped, summary.statuses.failed], [1, 1, "token-rejected", 0]);
+  assert.deepEqual(lines.map((line) => JSON.parse(line)), [{ level: "error", event: "cron.token_rejected" }]);
+  assert.deepEqual([await failedAt(f, "alpha"), await failedAt(f, "beta")], [null, null]);
+
+  // 운영자가 token을 교체하면 일시 정지가 끝난 뒤의 실행이 두 사용자를 이어서 발행합니다.
+  f.dependencies.github.requestPage = request;
+  f.clock.now += TOKEN_REJECTED_PAUSE_MS;
+  const resumed = await runCron(limits(f.clock.now), f.dependencies);
+  assert.deepEqual([resumed.published, resumed.stopped], [2, "complete"]);
 });

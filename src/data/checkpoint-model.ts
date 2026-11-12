@@ -29,7 +29,7 @@ export interface CollectionCheckpoint {
   attempt: number;
   lease: { owner: string; expiresAt: string } | null;
   nextRefreshAt: null;
-  /** `attempts`는 5xx·네트워크 오류 재시도 횟수이며, rate limit 대기는 `nextAttemptAt`만 설정합니다. */
+  /** `attempts`는 5xx·네트워크 오류 재시도 횟수이며, rate limit·token 거부(401) 대기는 `nextAttemptAt`만 설정합니다. */
   retry: { attempts: number; nextAttemptAt: string | null };
   profile: { publicRepositories: number; stars: number } | null;
   previous: CollectorState | null;
@@ -89,4 +89,6 @@ export interface BatchResult {
   result: CollectionResult | null;
   /** 이번 batch가 GitHub rate limit으로 멈췄으면 재시도 가능 시각입니다. 같은 token의 다른 작업도 이때까지 기다리는 것이 좋습니다. */
   rateLimitedUntil: string | null;
+  /** 이번 batch가 GitHub의 token 거부(401)로 멈췄습니다. 같은 token의 다른 작업도 같은 응답을 받으므로 멈추는 것이 좋습니다. */
+  tokenRejected: boolean;
 }

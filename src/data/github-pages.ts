@@ -48,6 +48,11 @@ export const MAX_RATE_LIMIT_WAIT_MS = 60_000;
 export const MAX_RATE_LIMIT_PAUSE_MS = 60 * 60 * 1000;
 /** 5xx·네트워크 오류를 n번째로 다시 시도하기 전 대기 시간입니다. 길이가 일시 오류 재시도 횟수 상한입니다. */
 export const TRANSIENT_RETRY_DELAYS_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
+/**
+ * GitHub가 token을 거부(401)한 뒤 다시 시도하기까지의 대기 시간입니다. 운영자가 `GH_STATS_TOKEN`을 교체하면
+ * 이 시간 뒤의 카드 요청이나 Cron이 이어서 수집합니다. 무효인 동안 미발행 사용자의 카드 요청은 이 간격으로 bootstrap을 시도합니다.
+ */
+export const TOKEN_REJECTED_PAUSE_MS = 60 * 60 * 1000;
 
 function hasNextPage(link: string | null): boolean {
   return link?.split(",").some((part) => /rel="next"/.test(part)) ?? false;
@@ -126,16 +131,19 @@ export class GitHubRequestError extends Error {
   }
 }
 
-export type RetryDecision = { kind: "rate-limit" | "transient"; delayMs: number };
+export type RetryDecision = { kind: "rate-limit" | "token-rejected" | "transient"; delayMs: number };
 
 /**
  * 실패한 GitHub 요청을 나중에 다시 시도할지 정합니다. 다시 시도하지 않을 오류는 null입니다.
  * - rate limit: 대기 시간과 재시도 횟수에 관계없이 reset까지 기다립니다(최대 `MAX_RATE_LIMIT_PAUSE_MS`).
  * - 5xx·네트워크 오류: `transientAttempts`(이미 소모한 일시 오류 재시도 횟수)가 상한보다 적을 때만 backoff 후 재시도합니다.
+ * - 401: 사용자가 아니라 운영 token의 문제이므로 실패로 끝내지 않고 `TOKEN_REJECTED_PAUSE_MS` 뒤 다시 시도합니다.
+ *   일시 오류 재시도 횟수를 소모하지 않습니다.
  * - 그 밖의 응답(404 등): 다시 시도해도 같은 결과이므로 null입니다.
  */
 export function retryDecision(error: unknown, transientAttempts: number): RetryDecision | null {
   if (!(error instanceof GitHubRequestError)) return null;
+  if (error.status === 401) return { kind: "token-rejected", delayMs: TOKEN_REJECTED_PAUSE_MS };
   if (error.retryDelayMs !== null) {
     return { kind: "rate-limit", delayMs: Math.min(error.retryDelayMs, MAX_RATE_LIMIT_PAUSE_MS) };
   }
