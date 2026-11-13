@@ -97,7 +97,7 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 5. 요청자에게 완료를 메일로 알리고 다음을 안내합니다. 확인용 gist는 이제 지워도 된다고 함께 알립니다.
    - Vercel CDN에 cache된 카드 응답은 최대 12시간(그 뒤 stale 응답 1회) 남을 수 있습니다.
    - README에서 카드 URL을 지우는 것은 요청자가 해야 합니다.
-   - 지운 Blob 객체가 Blob CDN에서 사라지는 시간은 HOST-13에서 확인합니다.
+   - 지운 카드의 Blob 직접 URL은 Blob CDN에서 몇 분(staging 측정 약 135초) 더 응답할 수 있습니다([`staging.md`](./staging.md#확인-결과)).
 6. 요청 메일 스레드는 완료 후 30일 안에 지웁니다. 끝나지 않은 요청(토큰 만료, 답장 없음)은 마지막 메일 후 30일 안에 지웁니다(`PRIVACY.md`의 보존 기간).
 
 삭제 표시는 `admissions.json`에만 있습니다. 등록 기록 손상 복구로 이 파일을 지우면 삭제 표시도 사라지고, 삭제한 사용자의 카드 URL이 다시 요청될 때 재수집됩니다. `PRIVACY.md`가 재수집하지 않는다고 약속하므로 [`abuse-defense.md`](./abuse-defense.md#등록-기록-손상)의 절차대로 다시 표시해야 합니다.
@@ -138,4 +138,4 @@ CLI 작업도 Blob 포함량을 쓰지만 일별 사용량 기록에는 들어�
 
 ## 범위 밖
 
-- 실제 store에서의 CLI 인증, 지운 Blob 객체의 Blob CDN 잔존 시간, manifest 손상·rollback·삭제 복구 연습은 HOST-13 staging에서 합니다.
+- 실제 store에서의 CLI 인증, 지운 Blob 객체의 Blob CDN 잔존 시간, rollback·삭제·복구 연습은 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)). manifest 손상 복구는 연습하지 않았습니다.

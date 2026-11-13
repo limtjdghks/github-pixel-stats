@@ -63,11 +63,11 @@ job 하나의 추정치는 다음 작업의 합입니다.
 - 사용량 기록을 읽지 못하거나 손상됐으면 예산을 알 수 없으므로 Cron은 갱신하지 않고, bootstrap은 진행하지 않습니다(fail-closed). 날짜가 바뀌면 새 기록을 쓰므로 손상된 기록은 그날만 영향을 줍니다.
 - 발행 카드 응답은 사용량 기록을 읽지 않아 예산과 관계없이 계속 제공됩니다.
 - 추정치는 상한이 아닙니다. 실제 job이 더 많이 쓰거나 bootstrap이 동시에 여러 개 시작되면 예산을 조금 넘을 수 있으며, 일일 예산을 월 포함량의 하루 몫보다 작게 둔 이유입니다.
-- Cron과 bootstrap은 모두 시작할 때 읽은 기록으로 판정하고 끝날 때 더합니다. 그래서 Cron이 도는 동안(최대 280초) 시작한 bootstrap은 Cron이 쓰고 있는 몫을 보지 못합니다. 이 경우 그날 합계는 최대 bootstrap 몫(26회)만큼 예산을 넘을 수 있습니다(약 86회). Cron은 하루 한 번이라 겹칠 수 있는 시간이 짧아 지금은 막지 않으며, HOST-13 실측 후 Cron 시작 시 예약·정산 방식을 검토합니다.
+- Cron과 bootstrap은 모두 시작할 때 읽은 기록으로 판정하고 끝날 때 더합니다. 그래서 Cron이 도는 동안(최대 280초) 시작한 bootstrap은 Cron이 쓰고 있는 몫을 보지 못합니다. 이 경우 그날 합계는 최대 bootstrap 몫(26회)만큼 예산을 넘을 수 있습니다(약 86회). Cron은 하루 한 번이라 겹칠 수 있는 시간이 짧아 지금은 막지 않으며, pilot 일별 기록을 본 뒤 Cron 시작 시 예약·정산 방식을 검토합니다.
 
 ### 처리량
 
-Advanced Operation 기준으로 하루에 처리할 수 있는 양은 대략 다음과 같습니다(코드 기준 추정, 실측은 HOST-13).
+Advanced Operation 기준으로 하루에 처리할 수 있는 양은 대략 다음과 같습니다(코드 기준 추정). staging에서는 사용자 2명을 처리한 Cron 1회가 Blob Advanced 12회를 썼습니다([`staging.md`](./staging.md#실측값)). 운영의 하루 처리량은 pilot 동안 일별 기록으로 확인합니다.
 
 - bootstrap이 몫을 다 쓴 날 Cron 몫은 약 33회입니다. 목록 조회 2회를 빼면 발행까지 끝나는 갱신 약 2명분입니다.
 - bootstrap이 없는 날은 약 4명을 갱신합니다.
@@ -136,5 +136,5 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 ## 범위 밖
 
 - 실패 사용자 자동 정리, 운영자 삭제·rollback CLI, 장애 복구 절차는 [`recovery.md`](./recovery.md)에 있습니다.
-- 실제 Blob 사용량과 집계값의 차이, job 하나의 실제 Advanced 수, Hobby 런타임 로그 보존 기간, 실제 CDN의 12시간 cache 적용은 HOST-13 staging에서 확인합니다.
-- 오류 로그는 메시지를 그대로 남깁니다. Blob SDK나 발행 경로의 오류 메시지에 pathname(`checkpoints/{user}.json` 등)이나 사용자명이 들어가는지는 HOST-13에서 실제 메시지로 확인하고, 들어가면 마스킹 방식을 정합니다.
+- CDN cache 적용은 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)). 발행까지 끝나는 job 하나의 실제 Advanced 수는 staging·운영 모두 아직 재지 못했으며, 발행된 `bootstrap.completed`의 `blobAdvanced`로 확인합니다([확인 절차](#확인-절차)). Hobby 팀은 `vercel usage`로 사용량을 조회할 수 없어, 실제 Blob 사용량과 집계값의 차이는 운영 대시보드에서 비교합니다([`production.md`](./production.md#vercel-usage-예상치)).
+- 오류 로그는 메시지를 그대로 남깁니다. Blob SDK나 발행 경로의 오류 메시지에 pathname(`checkpoints/{user}.json` 등)이나 사용자명이 들어가는지 staging에서 확인했을 때 앱 로그에는 없었습니다([`staging.md`](./staging.md#확인-결과)). 새로 관측한 오류 메시지에 들어가면 마스킹 방식을 정합니다.

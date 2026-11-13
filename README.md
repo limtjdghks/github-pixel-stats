@@ -13,9 +13,6 @@ No sign-up, no token, no fork — just your username in a URL.
 
 </div>
 
-> [!NOTE]
-> The hosted service is launching soon. Until then, `<service-host>` in the examples below is a placeholder for its domain.
-
 ## Features
 
 - **Just a URL.** Put your GitHub username in the card URL and you are done. There is nothing to install, authorize or keep running.
@@ -30,15 +27,15 @@ No sign-up, no token, no fork — just your username in a URL.
 Add these lines to your profile README and replace `<username>` with your GitHub username.
 
 ```html
-<img src="https://<service-host>/<username>/stats.svg" width="570" alt="<username>'s GitHub activity" />
-<img src="https://<service-host>/<username>/languages.svg" width="355" alt="<username>'s most committed languages" />
+<img src="https://github-pixel-stats-hosted.vercel.app/<username>/stats.svg" width="570" alt="<username>'s GitHub activity" />
+<img src="https://github-pixel-stats-hosted.vercel.app/<username>/languages.svg" width="355" alt="<username>'s most committed languages" />
 ```
 
 Prefer Markdown?
 
 ```markdown
-![GitHub activity](https://<service-host>/<username>/stats.svg)
-![Most committed languages](https://<service-host>/<username>/languages.svg)
+![GitHub activity](https://github-pixel-stats-hosted.vercel.app/<username>/stats.svg)
+![Most committed languages](https://github-pixel-stats-hosted.vercel.app/<username>/languages.svg)
 ```
 
 The two cards are independent, so you can use either one alone. Keep both images in the same paragraph to show them side by side.
@@ -52,7 +49,7 @@ The first time a username is requested, the card says **PREPARING** while its st
 Choose the mascot on the stats card with the `mascot` query parameter.
 
 ```text
-https://<service-host>/<username>/stats.svg?mascot=cat
+https://github-pixel-stats-hosted.vercel.app/<username>/stats.svg?mascot=cat
 ```
 
 | ID | Mascot |
