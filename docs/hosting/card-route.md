@@ -66,7 +66,7 @@ README 이미지 proxy가 오류 응답을 그리지 않으므로 SVG 응답은 
 - Vercel CDN cache key에는 deployment URL이 들어가므로 배포마다 cache가 분리됩니다([Purging Vercel CDN cache](https://vercel.com/docs/caching/cdn-cache/purge)). 배포 직후에는 모든 카드 요청이 Function과 manifest 읽기로 가고, 이전 deployment로 rollback하면 그 deployment에 남은 cache 항목이 다시 쓰일 수 있습니다.
 - `pending`·`unavailable`은 bootstrap 완료나 저장소 복구 직후 바로 바뀌어야 하므로 cache하지 않습니다. `failed`·`capacity`는 Vercel CDN에만 짧게 두고 브라우저·이미지 proxy에는 cache하지 않습니다. 발행된 사용자는 manifest를 먼저 읽으므로 발행 카드 항목이 이 상태로 바뀌지 않습니다. 근거는 [`abuse-defense.md`](./abuse-defense.md)에 있습니다.
 - 카드 객체는 public store에 있어 원래 Blob CDN을 거쳐 읽습니다. SDK는 cache 우회(`useCache: false`)를 private store에만 적용하며, manifest는 private store라 계속 origin을 읽습니다. 카드 pathname은 내용 주소라 cache 사본도 같은 내용입니다.
-- 실제 CDN의 header 적용과 `x-vercel-cache`, Blob 장애 중 SWR 재검증 응답이 상태 SVG일 때 이전 항목이 유지되는지는 HOST-13 staging에서 확인합니다.
+- 실제 CDN의 header 적용과 `x-vercel-cache`는 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)). Blob 장애 중 SWR 재검증 응답이 상태 SVG일 때 이전 항목이 유지되는지는 장애를 재현하지 않아 확인하지 못했습니다.
 
 - 상태 SVG는 요청한 카드와 같은 크기이며 사용자명 등 요청 입력값을 넣지 않습니다. 같은 상태·크기의 상태 SVG는 항상 같은 내용입니다.
 - 모든 SVG 응답에 `Content-Type: image/svg+xml; charset=utf-8`, `X-Content-Type-Options: nosniff`와 inline style·data font만 허용하는 CSP를 붙입니다.

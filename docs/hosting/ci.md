@@ -53,5 +53,5 @@ npm run validate:vercel-output
 - `.github/dependabot.yml`이 매주 github-actions 업데이트를 PR 하나로 묶어 올립니다. Dependabot은 기본 브랜치(`main`)의 설정만 읽으므로 `dev`가 `main`에 반영된 뒤부터 동작합니다.
 - 업데이트 PR은 release note에서 권한·입력 변경을 확인하고 CI가 통과한 뒤 병합합니다. major 버전 변경은 `refresh.yml`의 Pages 배포 영향까지 확인합니다.
 - 직접 고칠 때는 `gh api repos/{owner}/{repo}/commits/{tag} -q .sha`로 SHA를 확인합니다. fork 네트워크의 commit을 쓰지 않도록 공식 저장소에서 조회합니다.
-- `vercel@63.1.0`은 workflow의 `npx` 인자라 Dependabot이 올리지 않습니다. 배포 전 단계(HOST-13)나 Vercel 빌드 동작 변경이 필요할 때 로컬에서 위 재현 절차로 확인한 뒤 수동으로 올립니다.
+- `vercel@63.1.0`은 workflow의 `npx` 인자라 Dependabot이 올리지 않습니다. Vercel 빌드 동작 변경이 필요할 때 로컬에서 위 재현 절차로 확인한 뒤 수동으로 올립니다.
 - `npx`는 vercel CLI의 최상위 버전만 고정하고 하위 의존성은 실행할 때마다 다시 해석합니다. 따라서 코드 변경이 없어도 하위 의존성의 새 release 때문에 CI 결과가 달라질 수 있습니다. 소스 변경 없이 `vercel build` 단계만 실패하면 이 원인을 먼저 의심하고, 직전에 통과한 실행과 CLI 출력을 비교합니다.

@@ -84,5 +84,5 @@
 
 ## 범위 밖
 
-- 실제 Vercel Cron 전달, `waitUntil()`·`getDeadline()` 동작, brace glob `includeFiles`의 산출물 포함 여부, 실제 Blob 연결은 HOST-13 staging에서 확인합니다.
+- 실제 Vercel Cron 전달, `waitUntil()` bootstrap, 산출물의 `includeFiles` 포함, 실제 Blob 연결은 staging에서 확인했습니다. 산출물 포함은 배포 전 `validate:vercel-output`([`staging.md`](./staging.md#배포))과 발행 카드 렌더링으로, 나머지는 [`staging.md`](./staging.md#확인-결과)의 첫 요청·예약 Cron·첫 발행 결과로 확인했습니다.
 - Blob 사용량 예산과 실행 결과의 관측은 [`operations.md`](./operations.md)에 있습니다.
