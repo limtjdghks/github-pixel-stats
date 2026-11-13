@@ -136,5 +136,5 @@ Function 로그는 모두 한 줄 JSON입니다. Vercel 런타임 로그에서 `
 ## 범위 밖
 
 - 실패 사용자 자동 정리, 운영자 삭제·rollback CLI, 장애 복구 절차는 [`recovery.md`](./recovery.md)에 있습니다.
-- CDN cache 적용은 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)). 발행까지 끝나는 job 하나의 실제 Advanced 수는 staging·운영 모두 아직 재지 못했으며, 발행된 `bootstrap.completed`의 `blobAdvanced`로 확인합니다([확인 절차](#확인-절차)). Hobby 팀은 `vercel usage`로 사용량을 조회할 수 없어, 실제 Blob 사용량과 집계값의 차이는 운영 대시보드에서 비교합니다([`production.md`](./production.md#vercel-usage-예상치)).
+- CDN cache 적용은 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)). 운영 pilot에서 발행까지 끝난 Cron 실행(사용자 1명)은 `blobAdvanced` 16회(시작 목록 조회 2회 포함)를 써 추정치 10회를 넘었습니다([`production.md`](./production.md#출시-확인)). 발행된 `bootstrap.completed` 값과 일별 기록을 더 모아 추정치 조정을 판단합니다([확인 절차](#확인-절차)). Hobby 팀은 `vercel usage`로 사용량을 조회할 수 없어, 실제 Blob 사용량과 집계값의 차이는 운영 대시보드에서 비교합니다([`production.md`](./production.md#vercel-usage-예상치)).
 - 오류 로그는 메시지를 그대로 남깁니다. Blob SDK나 발행 경로의 오류 메시지에 pathname(`checkpoints/{user}.json` 등)이나 사용자명이 들어가는지 staging에서 확인했을 때 앱 로그에는 없었습니다([`staging.md`](./staging.md#확인-결과)). 새로 관측한 오류 메시지에 들어가면 마스킹 방식을 정합니다.
