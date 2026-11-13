@@ -27,7 +27,7 @@ The service runs on Vercel. Card Functions run in Vercel's `iad1` region (Washin
 | Registration record: requested usernames, registration time, and failure or removal times | Private Vercel Blob store | Service operator |
 | Daily usage counters (operation counts only, no usernames) | Private Vercel Blob store | Service operator |
 
-The service does not intentionally log usernames or tokens; whether error messages from the storage layer can contain them is being checked before launch. Vercel's platform request logs record request URLs, which include the username in the card path; those logs are kept according to Vercel's log retention for the project's plan.
+The service does not intentionally log usernames or tokens, and none appeared in its own logs during pre-launch testing. Vercel's platform request logs record request URLs, which include the username in the card path; those logs are kept according to Vercel's log retention for the project's plan.
 
 ## How long it is kept
 

@@ -69,7 +69,7 @@ private store의 `admissions.json` 하나에 전체 사용자를 기록합니다
 | `removed` | `no-store` | `max-age=3600` | 운영자가 해제하기 전까지 바뀌지 않음. 해제 뒤 최대 1시간 늦게 반영 |
 | `pending`, `unavailable` | `no-store` | 없음 | bootstrap 완료나 저장소 복구 직후 바로 바뀌어야 함 |
 
-- `failed`·`capacity`는 회복 뒤 바로 바뀌도록 브라우저·이미지 proxy에는 cache하지 않고 Vercel CDN에만 둡니다. [Cache-Control headers](https://vercel.com/docs/caching/cache-control-headers) 문서상 `Vercel-CDN-Cache-Control`이 `Cache-Control`보다 우선하므로 반복 요청은 CDN에서 끝나야 하며, 실제 동작은 HOST-13에서 확인합니다.
+- `failed`·`capacity`는 회복 뒤 바로 바뀌도록 브라우저·이미지 proxy에는 cache하지 않고 Vercel CDN에만 둡니다. [Cache-Control headers](https://vercel.com/docs/caching/cache-control-headers) 문서상 `Vercel-CDN-Cache-Control`이 `Cache-Control`보다 우선하므로 반복 요청은 CDN에서 끝나야 하며, staging에서 브라우저 `no-store`·CDN HIT로 확인했습니다([`staging.md`](./staging.md#확인-결과)).
 - 발행된 사용자의 카드 URL은 manifest를 먼저 읽어 `ready`가 되므로, 발행 카드의 CDN 항목이 `failed`·`capacity`로 바뀌지 않습니다. `unavailable`은 cache하지 않아 저장소 장애가 발행 카드 항목을 덮지 않게 합니다.
 - `pending`은 cache하지 않으므로 등록된 미발행 사용자의 반복 요청은 매번 Function과 manifest·등록 기록 읽기에 닿습니다. bootstrap은 checkpoint lease로 사용자당 한 실행만 수집합니다.
 
@@ -77,7 +77,7 @@ private store의 `admissions.json` 하나에 전체 사용자를 기록합니다
 
 앱 계층은 사용자 수와 GitHub 요청을 막지만, 서로 다른 사용자명이나 임의 query로 cache를 우회하는 대량 요청의 Function·CDN 사용량은 막지 못합니다. 비정규 URL은 저장소를 읽지 않는 308이고 상한에 도달한 뒤의 미등록 사용자명은 private store 읽기 두 번(manifest·등록 기록)으로 끝나지만, 요청 수 자체는 Vercel Firewall이 막습니다.
 
-[WAF Rate Limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)(2026-10-21 확인)에 따르면 Hobby는 프로젝트당 rate-limit rule 1개, fixed window 10초~10분, counting key는 IP와 JA4 digest이며 action은 기본 429, Log, Deny, Challenge입니다. rule은 dashboard에서 만들고 production deployment에 publish합니다. 아래는 초기 설정안이며 실제 생성과 값 조정은 HOST-13에서 합니다.
+[WAF Rate Limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)(2026-10-21 확인)에 따르면 Hobby는 프로젝트당 rate-limit rule 1개, fixed window 10초~10분, counting key는 IP와 JA4 digest이며 action은 기본 429, Log, Deny, Challenge입니다. rule은 dashboard에서 만들거나 REST API `PUT /v1/security/firewall/config`로 만듭니다. 2026-11 공개 OpenAPI 기준으로 rate-limit 설정(`mitigate.rateLimit`)은 PUT 스키마에만 있고 PATCH `rules.insert`에는 없습니다. PUT은 설정 전체를 덮어쓰므로 기존 rule을 함께 보냅니다. 운영 프로젝트에는 아래 설정안대로 Log action rule을 만들었습니다([`production.md`](./production.md#구성)).
 
 | 항목 | 초기 설정안 |
 | --- | --- |
@@ -105,4 +105,4 @@ private store의 `admissions.json` 하나에 전체 사용자를 기록합니다
 ## 범위 밖
 
 - 등록 기록의 보존·삭제(실패 사용자 정리, 삭제 요청)는 [`recovery.md`](./recovery.md), Blob 사용량 예산과 로그는 [`operations.md`](./operations.md)에 있습니다.
-- 실제 WAF rule 생성·Log 관측·action 전환, 실제 CDN에서 `Cache-Control: no-store`와 `Vercel-CDN-Cache-Control`을 함께 쓴 상태 SVG가 cache되는지(`x-vercel-cache`)는 HOST-13 staging에서 확인합니다.
+- WAF Log 관측과 429 전환은 출시 뒤 운영에서 합니다. `no-store`와 `Vercel-CDN-Cache-Control`을 함께 쓴 상태 SVG의 CDN cache는 staging에서 확인했습니다([`staging.md`](./staging.md#확인-결과)).
