@@ -105,6 +105,7 @@ Blob 포함량을 넘으면 30일 동안 Blob 접근이 막혀 카드 제공 전
 | 첫 요청 | 200 `pending`(`no-store`), bootstrap이 GitHub 14회·Blob Advanced 4회 뒤 `paused` |
 | Preview | Deployment Protection으로 외부 요청 302. 그래서 Preview의 `unavailable` 응답은 직접 확인하지 못했고, Preview에 store·Secret이 없다는 것은 환경 변수 목록으로 확인했습니다 |
 | 환경 변수 | `GH_STATS_TOKEN`·`CRON_SECRET`은 Production에만 있는 Sensitive 변수. store ID 두 개는 Production에만, store 연결이 만든 변수는 Production·Development에만 있음 |
-| Cron | Production deployment에 `/api/cron` 등록 |
+| Cron | Production deployment에 `/api/cron` 등록. `vercel crons run /api/cron` 수동 실행이 `cron.completed`로 끝남. 2026-11-12 18시대(UTC) 예약 실행은 확인하지 못함(Hobby 로그 1시간 보존, 그 시각 일별 기록을 읽지 않음) |
 | WAF | [구성](#구성)의 rule을 Log action으로 적용 |
-| pilot 첫 발행 | 운영자 계정으로 시작. 2026-11-12 18시대(UTC) 예약 Cron 실행 로그는 관측되지 않았고 카드는 `pending` 상태. 첫 발행은 이후 예약 Cron에서 확인합니다 |
+| pilot 첫 발행 | 운영자 계정(최근 12개월 커밋 826개). 2026-11-13 수동 Cron 4회(11:15~11:47 UTC, GitHub 148·183·167·144회)째에 첫 발행. 두 카드 모두 200 `ready`, `image/svg+xml`, 브라우저 `max-age=300`, 반복 요청은 CDN HIT, XML 유효, `role="img"`·`<title>`·`<desc>` 있음 |
+| Blob Advanced | `paused`로 끝난 Cron 실행(사용자 1명)은 회당 10회, 발행까지 끝난 실행은 16회(시작 목록 조회 포함). 그날 일별 합계 52회(예산 60회) |
