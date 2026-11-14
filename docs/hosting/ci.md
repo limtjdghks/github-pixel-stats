@@ -40,18 +40,17 @@ npm run validate:vercel-output
 | Workflow·배포 | 트리거 | Secret | 권한 |
 | --- | --- | --- | --- |
 | `ci.yml` | `pull_request`, `dev`·`main` push | 없음 | `contents: read`, checkout credential 미보존 |
-| `refresh.yml`(legacy 개인 Pages) | 매일 `18:17 UTC` schedule, 수동 실행 | `GH_STATS_TOKEN`(collect job만) | job별 최소 권한 |
 | Vercel 호스팅 배포 | Vercel Git 연동(`main` push는 Production, 그 밖의 push·PR은 Preview) | Vercel 환경 변수(Production만 운영값) | Vercel이 관리 |
 
 - `pull_request_target`·`workflow_run`처럼 fork 코드를 base 저장소 권한이나 Secret과 함께 실행하는 트리거는 쓰지 않습니다. GitHub는 fork에서 연 `pull_request`에 Secret을 넘기지 않고 `GITHUB_TOKEN`을 읽기 전용으로 줍니다.
-- `refresh.yml`은 PR에서 실행되지 않습니다. fork에서는 schedule이 기본으로 비활성입니다.
+- legacy 개인 Pages workflow(`refresh.yml`)는 #46에서 삭제했습니다. 그 workflow가 쓰던 저장소 Actions secret `GH_STATS_TOKEN`은 남아 있지만 어떤 workflow도 읽지 않습니다.
 - 운영 `GH_STATS_TOKEN`·`CRON_SECRET`·Blob store ID는 Vercel Production 환경에만 둡니다([`function-setup.md`](./function-setup.md)). fork PR의 Preview 배포는 Vercel이 운영자 승인을 받은 뒤에만 실행하며, Preview에는 운영 값이 없습니다([`production.md`](./production.md#git-연동과-preview)).
 
 ## Action 고정과 업데이트 정책
 
 - 모든 workflow의 `uses:`는 공식 저장소 release tag가 가리키는 full commit SHA로 고정하고 같은 줄에 `# vX.Y.Z` 주석을 둡니다. tag는 옮겨질 수 있지만 SHA는 바뀌지 않습니다.
 - `.github/dependabot.yml`이 매주 github-actions 업데이트를 PR 하나로 묶어 올립니다. Dependabot은 기본 브랜치(`main`)의 설정만 읽으므로 `dev`가 `main`에 반영된 뒤부터 동작합니다.
-- 업데이트 PR은 release note에서 권한·입력 변경을 확인하고 CI가 통과한 뒤 병합합니다. major 버전 변경은 `refresh.yml`의 Pages 배포 영향까지 확인합니다.
+- 업데이트 PR은 release note에서 권한·입력 변경을 확인하고 CI가 통과한 뒤 병합합니다.
 - 직접 고칠 때는 `gh api repos/{owner}/{repo}/commits/{tag} -q .sha`로 SHA를 확인합니다. fork 네트워크의 commit을 쓰지 않도록 공식 저장소에서 조회합니다.
 - `vercel@63.1.0`은 workflow의 `npx` 인자라 Dependabot이 올리지 않습니다. Vercel 빌드 동작 변경이 필요할 때 로컬에서 위 재현 절차로 확인한 뒤 수동으로 올립니다.
 - `npx`는 vercel CLI의 최상위 버전만 고정하고 하위 의존성은 실행할 때마다 다시 해석합니다. 따라서 코드 변경이 없어도 하위 의존성의 새 release 때문에 CI 결과가 달라질 수 있습니다. 소스 변경 없이 `vercel build` 단계만 실패하면 이 원인을 먼저 의심하고, 직전에 통과한 실행과 CLI 출력을 비교합니다.
